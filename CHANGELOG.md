@@ -6,6 +6,8 @@
 - Browse full-size previews inside the gallery, with thumbnails, arrows, keyboard navigation and filtered version history.
 - Portuguese is the default interface language; switch to English from the header and keep the preference across reloads.
 
+- Match gallery thumbnails and previews to their device: phone, tablet or browser, using the canvas frame styling without wide image wells.
+
 # Changelog
 
 ## 0.6.1 (2026-11-01)

@@ -7,8 +7,8 @@
 
 ## Task: Replace the gallery image wells
 
-- [ ] Add device classification and proportional frame markup beside `image()`; retain missing-image text.
-- [ ] Share existing frame styling; add a compact decorative browser bar, and responsive fitting in gallery stages.
-- [ ] Use the helper in the carousel and gallery grid; keep titles, counters and navigation outside the devices.
-- [ ] Build the Uberdog map, verify the real UI at desktop and phone widths, and check phone/tablet/browser metadata classification.
-- [ ] Run existing relevant tests and the design detector, update checksums, commit and push to our fork.
+- [x] Add device classification and proportional frame markup beside `image()`; retain missing-image text.
+- [x] Share existing frame styling; add a compact decorative browser bar, and responsive fitting in gallery stages.
+- [x] Use the helper in the carousel and gallery grid; keep titles, counters and navigation outside the devices.
+- [x] Build the Uberdog map, verify the real UI at desktop and phone widths, and check phone/tablet/browser metadata classification.
+- [x] Run existing relevant tests and the design detector, update checksums, commit and push to our fork.

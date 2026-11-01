@@ -21,7 +21,7 @@ c054618c194f8ae3ca3ad9b7e0472748075448bcd8ae5e8edd3931c172d855e6  skills/floorpl
 a09cd7cad26c981183f2352302a494e0a130e483e2c1001a9b7dbfd36e3439d9  skills/floorplan/assets/ui/20-health.js
 e326a65e6e92949391fcc4960b67c0b9340e8f1cbd6cf43333b1f530503401c1  skills/floorplan/assets/ui/25-recent.js
 f2463b797cf75329a95b56eb976e372298a41312498b6adb6033ba3e8bae5636  skills/floorplan/assets/ui/30-screens.js
-17a72dc31e360918c8accfe4e40c607273d01486eadc7cd33ed61b8ce87db9ff  skills/floorplan/assets/ui/35-visuals.js
+c4d6d9aa325e71ee02e1f89a7991a6b1c3ba4ee9324f440162a86fb474d69b07  skills/floorplan/assets/ui/35-visuals.js
 4811505dbab0b9034573aaaa33980e7e1685d5c6a1521f4578fb38c8dad37d08  skills/floorplan/assets/ui/40-tour.js
 9cd14f892119ec2d448e1c647c9c539772a52319d304c9b637ef5188a3fe661c  skills/floorplan/assets/ui/50-cloud.js
 74ae52f4125dbe6bd15c9f62c27822275a8083b845623841c9e5243cd7a51b52  skills/floorplan/assets/ui/60-export.js

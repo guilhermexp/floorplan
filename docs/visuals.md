@@ -6,6 +6,8 @@ Each screen can keep the interface you planned and screenshots of what you actua
 
 In **Visuais**, click a thumbnail to preview its image inside the gallery. Previous/next buttons and the left/right arrow keys browse all versions in the current search and filter. The counter shows the current image and total. **Miniaturas** returns to the full grid; **Ampliar** opens a larger image; **Abrir no canvas** navigates to its screen. Missing images and empty searches have an explicit empty state.
 
+Gallery thumbnails and previews use thin frames fitted to the image viewport: phone, tablet or browser. Titles stay outside the frame. Use explicit `Mobile`, `Tablet` or `Desktop` labels alongside viewport dimensions when the device type is ambiguous. Frames preserve the entire image without transforming the original file.
+
 On narrow screens, the preview uses the gallery width and **Miniaturas** returns to browsing. On wider screens, thumbnails remain alongside the preview.
 
 ## Interface language

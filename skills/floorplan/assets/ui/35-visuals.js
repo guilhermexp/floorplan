@@ -11,13 +11,27 @@
   const badge = (v) => `<span class="visual-badge ${h(v.kind)}">${kindName(v)}</span>${v.approved ? '<span class="visual-approved">Aprovada</span>' : ''}`;
   const meta = (v) => [v.version, v.viewport, v.state].filter(Boolean).map(h).join(' · ');
   const image = (v, cls = '') => usable(v) ? `<img class="${cls}" src="${h(SC.visualSrc(v))}" alt="${h(v.title)}" loading="lazy" decoding="async">` : '<span class="vs-empty">Imagem indisponível. O registro foi preservado.</span>';
+  // Match the canvas proportions, while allowing the gallery to identify tablet and browser chrome.
+  function deviceFrame(v) {
+    if (!usable(v)) return image(v);
+    const viewport = v.viewport || '', match = /(\d+)\s*[x×]\s*(\d+)/i.exec(viewport);
+    const width = match && +match[1] > 0 ? +match[1] : 0, height = match && +match[2] > 0 ? +match[2] : 0;
+    const measured = width && height ? width / height : 0;
+    const tablet = /tablet|ipad/i.test(viewport), browser = /desktop|browser|web|navegador/i.test(viewport);
+    const phone = /mobile|phone|android|celular/i.test(viewport);
+    const type = tablet ? 'tablet' : browser ? 'browser' : phone ? 'phone' : width && height && Math.min(width,height) >= 600 && Math.max(width,height) <= 1400 && Math.max(measured,1/measured) <= 1.6 ? 'tablet' : measured > 1 ? 'browser' : 'phone';
+    const ratio = Math.max(.25,Math.min(3,measured || (type === 'browser' ? 1.5 : type === 'tablet' ? .75 : 390/844)));
+    const chrome = type === 'browser' ? '<div class="vs-browser-chrome" aria-hidden="true"><svg viewBox="0 0 30 8"><circle cx="4" cy="4" r="2"/><circle cx="15" cy="4" r="2"/><circle cx="26" cy="4" r="2"/></svg><span></span></div>' : '';
+    return `<div class="vs-device vs-device-${type}" style="--device-ratio:${ratio}">${chrome}${image(v)}</div>`;
+  }
   const source = (v) => v.kind === 'capture' && /^https?:\/\//i.test(v.sourceUrl || '') ? `<a href="${h(v.sourceUrl)}" target="_blank" rel="noopener noreferrer">${h(v.sourceUrl)}</a>` : '';
   const css = document.createElement('style');
   css.textContent = `
 .card.visual-card { padding:0; gap:0; background:transparent; box-shadow:none; border-radius:0; overflow:visible; }
 .node:hover .card.visual-card, .node.sel .card.visual-card { background:transparent; box-shadow:none; }
-.visual-card .visual-image { height:calc(var(--visual-height) - 56px); flex:none; width:100%; background:#fff; border:2px solid #343434; border-radius:28px; box-shadow:0 5px 18px #0002; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#555; }
-.visual-card.visual-desktop .visual-image { border-radius:12px; }
+.visual-card .visual-image, .vs-device { background:#fff; border:2px solid #343434; border-radius:28px; box-shadow:0 5px 18px #0002; overflow:hidden; color:#555; }
+.visual-card .visual-image { height:calc(var(--visual-height) - 56px); flex:none; width:100%; display:flex; align-items:center; justify-content:center; }
+.visual-card.visual-desktop .visual-image, .vs-device-browser { border-radius:12px; }
 .visual-card .visual-image img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
 .node.sel .visual-card .visual-image { outline:1px solid var(--ring); outline-offset:3px; }
 svg.dim .node:not(.hl) .card.visual-card > * { opacity:1; }
@@ -47,10 +61,20 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
 .vs-dialog option { color:#181818; background:#fff; }
 .vs-dialog input:focus-visible,.vs-dialog select:focus-visible,.vs-dialog textarea:focus-visible,.vs-dialog button:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
 .vs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; }
-.vs-screen { background:rgba(var(--ink),.025); border:1px solid var(--hair-2); border-radius:14px; padding:0; overflow:hidden; text-align:left; color:var(--text); cursor:pointer; font:inherit; transition:border-color .15s; }
-.vs-screen:hover { border-color:var(--ring); }
-.vs-thumb { height:174px; display:flex; align-items:center; justify-content:center; background:rgba(var(--ink),.04); color:var(--text-3); font-size:12px; }
-.vs-thumb img { width:100%; height:100%; object-fit:contain; }
+.vs-screen { background:transparent; border:0; border-radius:14px; padding:0; overflow:visible; text-align:left; color:var(--text); cursor:pointer; font:inherit; transition:border-color .15s; }
+.vs-screen:hover .vs-device { outline:1px solid var(--ring); outline-offset:3px; }
+.vs-thumb { height:174px; container-type:size; display:flex; align-items:center; justify-content:center; background:transparent; color:var(--text-3); font-size:12px; }
+.vs-device { --device-bar:0px; flex:none; width:min(calc(100cqw - 12px),calc((100cqh - var(--device-bar) - 12px) * var(--device-ratio))); }
+.vs-device img { display:block; width:100%; height:auto; aspect-ratio:var(--device-ratio); object-fit:contain; }
+.vs-device-tablet { border-radius:20px; }
+.vs-device-browser { --device-bar:24px; }
+.vs-browser-chrome { height:var(--device-bar); display:flex; gap:12px; align-items:center; padding:0 9px; background:#f0f0f0; border-bottom:1px solid #ddd; }
+.vs-browser-chrome svg { width:30px; height:8px; fill:#929292; flex:none; }
+.vs-browser-chrome span { height:50%; width:62%; background:#fff; border-radius:4px; }
+.vs-thumb .vs-device { border-width:1px; border-radius:9px; box-shadow:0 2px 7px #0002; }
+.vs-thumb .vs-device-browser { --device-bar:10px; border-radius:5px; }
+.vs-thumb .vs-browser-chrome { padding:0 3px; gap:4px; }
+.vs-thumb .vs-browser-chrome svg { width:16px; height:5px; }
 .vs-screen-copy { padding:14px; }
 .vs-screen-copy strong { font-size:13px; display:block; margin-bottom:8px; }
 .vs-screen-copy small { display:block; line-height:1.7; color:var(--text-3); font-size:11px; }
@@ -96,13 +120,12 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
 .vs-browsing .vs-screen-copy { padding:10px; }
 .vs-browsing .vs-screen-copy small { display:none; }
 .vs-browsing .vs-screen-copy strong { font-size:11px; margin:0; }
-.vs-screen[aria-current=true] { border-color:var(--ring); background:rgba(var(--ink),.08); }
+.vs-screen[aria-current=true] .vs-device { outline:2px solid var(--ring); outline-offset:3px; }
 .vs-preview-pane { display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
 .vs-preview-heading { display:flex; gap:14px; justify-content:space-between; align-items:start; flex:none; }
 .vs-preview-heading h3 { margin:0 0 5px; font-size:17px; font-weight:600; }
 .vs-preview-heading p { margin:0; color:var(--text-3); font-size:12px; line-height:1.6; }
-.vs-carousel-image { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:12px; background:rgba(var(--ink),.025); }
-.vs-carousel-image img { display:block; width:100%; height:100%; min-height:0; object-fit:contain; }
+.vs-carousel-image { flex:1; min-height:0; container-type:size; display:flex; align-items:center; justify-content:center; overflow:hidden; background:transparent; }
 .vs-carousel-footer { display:flex; align-items:center; justify-content:space-between; gap:10px; flex:none; flex-wrap:wrap; }
 .vs-carousel-nav { display:flex; align-items:center; gap:12px; }
 .vs-carousel-nav .btn { min-height:44px; min-width:44px; font-size:20px; }
@@ -249,7 +272,7 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
       pane.hidden = false; d.classList.add('vs-browsing');
       d.querySelector('[data-preview-title]').textContent = screen.name;
       d.querySelector('[data-preview-meta]').textContent = visual ? [kindName(visual), visual.version, visual.viewport, visual.state, visual.approved ? 'Aprovada' : ''].filter(Boolean).join(' · ') : 'Esta tela ainda não tem imagens.';
-      d.querySelector('.vs-carousel-image').innerHTML = visual ? image(visual) : '<p class="vs-empty">Aguardando a primeira proposta ou captura real desta tela.</p>';
+      d.querySelector('.vs-carousel-image').innerHTML = visual ? deviceFrame(visual) : '<p class="vs-empty">Aguardando a primeira proposta ou captura real desta tela.</p>';
       d.querySelector('[data-position]').textContent = `${index + 1} / ${slides.length}`;
       d.querySelector('[data-prev]').disabled = index === 0;
       d.querySelector('[data-next]').disabled = index === slides.length - 1;
@@ -282,7 +305,7 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
       });
       grid.innerHTML = list.map((s) => {
         const refs = forScreen(s), thumb = refs.find((v) => v.approved && usable(v)) || refs.find(usable), proposals = refs.filter((v) => v.kind === 'proposal').length;
-        return `<button class="vs-screen" data-screen="${h(s.id)}"><div class="vs-thumb">${thumb ? image(thumb) : 'Aguardando imagem'}</div><div class="vs-screen-copy"><strong>${h(s.name)}</strong><small>${proposals} propostas · ${refs.length - proposals} capturas reais</small><small>${h(s.url)}</small></div></button>`;
+        return `<button class="vs-screen" data-screen="${h(s.id)}"><div class="vs-thumb">${thumb ? deviceFrame(thumb) : 'Aguardando imagem'}</div><div class="vs-screen-copy"><strong>${h(s.name)}</strong><small>${proposals} propostas · ${refs.length - proposals} capturas reais</small><small>${h(s.url)}</small></div></button>`;
       }).join('');
       if (!list.length) grid.innerHTML = '<p class="vs-empty">Nenhuma tela corresponde a este filtro.</p>';
       grid.querySelectorAll('[data-screen]').forEach((b) => b.onclick = () => {
