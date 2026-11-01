@@ -40,13 +40,20 @@
     usedBy.get(b.id).push(s);
   }
 
-  function showScreen(s) {
+  function showScreen(s, { push = true } = {}) {
+    if (!s) return;
     closeMenu();
     const items = s.behind.filter((b) => SC.exists(b.id));
     // a short walkthrough: the screen → its first request → the server code → where it ends up
     const firstOf = (kind) => items.find((b) => b.kind === kind);
     const steps = [firstOf('screen'), firstOf('request'), firstOf('server'), firstOf('data') || firstOf('outside')].filter(Boolean);
-    SC.showBoard({ kind: 'Screen', icon: 'ui', title: s.name, question: 'Everything behind ' + s.url, items, steps: steps.length >= 3 ? steps : [] });
+    const visuals = (G.visuals || []).filter((v) => !v.unresolved && v.screen === s.id && SC.exists('v:' + v.id));
+    SC.showBoard({ kind: 'Screen', icon: 'ui', title: s.name, question: 'Everything behind ' + s.url, screen: s.id,
+      items: [...visuals.map((v) => ({ id: 'v:' + v.id, note: '' })), ...items], steps: steps.length >= 3 ? steps : [] });
+    if (push) {
+      const hash = '#screen=' + encodeURIComponent(s.id);
+      if (location.hash !== hash) history.pushState(null, '', hash);
+    }
   }
 
   // ---------- header menu ----------
@@ -138,4 +145,10 @@
 
   // other features (the tour) can open a screen's board
   window.FloorplanScreens = { list: screens, show: showScreen, openMenu };
+  function restoreScreen() {
+    const id = new URLSearchParams(location.hash.slice(1)).get('screen');
+    if (id) showScreen(screens.find((s) => s.id === id), { push: false });
+  }
+  SC.on('ready', restoreScreen);
+  window.addEventListener('popstate', restoreScreen);
 })();

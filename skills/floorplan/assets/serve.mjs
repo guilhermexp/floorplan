@@ -17,6 +17,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { addVisual, buildVisuals, decodeImageDataUrl, embedVisuals, MAX_IMAGE_BYTES } from './visuals-store.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
@@ -37,7 +38,7 @@ if (has('stop')) {
 // ---------- export: a copy of the map to share ----------
 // The same self-contained page, marked as exported: no Ask bar, no requests for Claude or Codex, no links into
 // this computer, and only the extras asked for. Used by the map's Export button and by --export.
-const EXPORT_PARTS = ['flows', 'notes', 'recent', 'health'];
+const EXPORT_PARTS = ['flows', 'notes', 'recent', 'health', 'visuals'];
 const EXPORT_DEFAULT = ['flows', 'notes'];
 const DATA_START = '<script>window.FLOORPLAN = ';
 function exportMap(include, extraFlows = []) {
@@ -56,6 +57,8 @@ function exportMap(include, extraFlows = []) {
   };
   if (!on.includes('recent')) delete out.recent;
   if (!on.includes('health')) delete out.health;
+  if (on.includes('visuals')) out.visuals = embedVisuals(g.visuals, here);
+  else delete out.visuals;
   const json = JSON.stringify(out).replace(/<\/(script)/gi, '<\\/$1').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   const slug = String(g.project?.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'floorplan';
   return { html: html.slice(0, a + DATA_START.length) + json + html.slice(b), name: `${slug}-map.html`, include: on, plan: !!g.meta?.blueprint };
@@ -76,7 +79,7 @@ if (has('export')) {
     const file = path.resolve(dest && !dest.startsWith('--') ? dest : path.join(here, x.name));
     fs.writeFileSync(file, x.html);
     console.log(`Exported the map to ${file}`);
-    const label = { flows: 'flows and the tour', notes: 'notes', recent: 'recent work', health: x.plan ? 'the design review' : 'the health check' };
+    const label = { flows: 'flows and the tour', notes: 'notes', recent: 'recent work', health: x.plan ? 'the design review' : 'the health check', visuals: 'screen images' };
     console.log(`Includes: the map${x.include.map((p) => ', ' + label[p]).join('')}. One file that opens in any browser, with no Ask bar.`);
     if (x.include.includes('health') && !x.plan) console.log('It includes the health check: which endpoints are open and where secrets sit in the code (never their values). Share it only with people you trust.');
     process.exit(0);
@@ -87,7 +90,7 @@ const idleExit = Number(opt('idle-exit', 0)) * 60000; // stop this long after th
 const selfHash = crypto.createHash('sha1').update(fs.readFileSync(fileURLToPath(import.meta.url))).digest('hex').slice(0, 12);
 const model = opt('model', process.env.FLOORPLAN_MODEL || '');
 const token = crypto.randomBytes(16).toString('hex');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.json': 'application/json', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.json': 'application/json', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
 
 // ---------- find the CLI that answers: Claude Code or Codex ----------
 function which(cmd) {
@@ -528,6 +531,29 @@ const server = http.createServer((req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/status') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ tabs: tabs.size, pid: process.pid, hash: selfHash, root })); }
     if (req.method === 'GET' && url.pathname === '/api/health') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ cli: !!cli, engine, want, version, path: cli?.path || null })); }
+    if (url.pathname === '/api/visuals') {
+      const json = (status, data) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(data)); };
+      if (req.method === 'GET') {
+        try { const graph = JSON.parse(fs.readFileSync(path.join(here, 'graph.json'), 'utf8')); return json(200, { visuals: buildVisuals({ graph, outDir: here }) }); }
+        catch (e) { return json(400, { ok: false, error: e.message }); }
+      }
+      if (req.method === 'POST') {
+        const chunks = []; let size = 0, tooLarge = false;
+        req.on('data', (d) => { size += d.length; if (size > Math.ceil(MAX_IMAGE_BYTES * 4 / 3) + 20000) { tooLarge = true; chunks.length = 0; } else if (!tooLarge) chunks.push(d); });
+        req.on('end', () => {
+          if (tooLarge) return json(413, { ok: false, error: 'Image exceeds 12 MiB' });
+          if (changing) return json(409, { ok: false, error: 'A plan change is still running. Please try again shortly.' });
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+            const graph = JSON.parse(fs.readFileSync(path.join(here, 'graph.json'), 'utf8'));
+            const visual = addVisual({ outDir: here, graph, metadata: body, bytes: decodeImageDataUrl(body.dataUrl), rebuild: () => { skillScript('build.mjs'); load(); } });
+            return json(201, { ok: true, visual, visuals: buildVisuals({ graph, outDir: here }) });
+          } catch (e) { return json(400, { ok: false, error: e.message }); }
+        });
+        return;
+      }
+      return json(405, { ok: false, error: 'Use GET or POST' });
+    }
     // requested flows are saved next to the map; build.mjs folds them into graph.json
     if (url.pathname === '/api/flows') {
       if (req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ flows: readFlows() })); }

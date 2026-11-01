@@ -1,3 +1,5 @@
+> **Local customization — screen visuals.** This working copy adds proposals and real captures per screen, canvas image cards, comparison, manual/agent import and portable export. See [the visual workflow](docs/visuals.md). It has not been published upstream.
+
 <div align="center">
 
 <picture>

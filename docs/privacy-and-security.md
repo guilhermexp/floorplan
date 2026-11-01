@@ -14,7 +14,8 @@ For what the plugin itself can and can't do on your computer (no hooks, MCP serv
 | Asking questions (Codex) | a `codex exec` run on your computer, with your ChatGPT sign-in, not saved to your Codex history | your question, and the files Codex chooses to read |
 | Changing a blueprint from the map | the same as asking questions, with Claude Code or Codex; the map's server then writes only the plan's files in `floorplan/` | your request, and the files the AI chooses to read |
 | Asking questions (Claude app) | your claude.ai account | the map (names, descriptions, structure), never your source code. Claude asks before publishing it there |
-| Exporting a copy | your computer: the map's server writes one HTML file | nothing. You decide who gets the file. It holds the map, plus Health or recent work only if you tick them, and never your folder path, git remotes or source code |
+| Adding a screen visual | browser or CLI to the local map folder | selected image and metadata to the local server only; never to a cloud service |
+| Exporting a copy | your computer: the map's server writes one HTML file | nothing. You decide who gets the file. It holds the map, plus Health, recent work or screen images only if you tick them, and never your folder path, git remotes or source code |
 | Floorplan Cloud waitlist (only if you sign up) | the map's server, to Floorplan's waitlist service | the email you typed or chose, and "just me" or "with my team". See [below](#floorplan-cloud-waitlist) |
 
 Floorplan has no analytics or telemetry, no dependencies to install, and no install scripts. Its only outside connection is the opt-in waitlist below, and nothing reaches it unless you sign up. The map's few links to documentation open only when you click them.
@@ -24,11 +25,12 @@ The layout engine ([elkjs](https://github.com/kieler/elkjs) 0.9.3, EPL-2.0) and 
 ## The local server
 
 - It listens on `127.0.0.1` only, so other machines on your network can't reach it.
-- Every start creates a random token, which only the map page it serves receives. Asking questions and saving flows require that token, and those requests are refused when they come from another website.
+- Every start creates a random token, which only the map page it serves receives. Asking questions, saving flows and adding screen images require that token, and those requests are refused when they come from another website.
 - It answers only to `127.0.0.1` and `localhost` at its own port, so a website that points its own domain at your computer (DNS rebinding) can't load the map or its token.
 - Questions run Claude with **read-only** tools: reading files, searching, and the map's own lookup script. It can't edit files or run other commands.
 - With Codex, questions run in Codex's **read-only** sandbox: it can read and search, but not write files.
 - On a blueprint (a map planned from a PRD), **Change** requests run the same read-only way. The agent replies with the updated plan, and the server itself writes only `floorplan/plan.json`, `floorplan/architecture.json` and `floorplan/recent-work.json`, after checking them, keeping the old copies for Undo.
+- **Adding a visual** writes a uniquely named image and appends its metadata in `floorplan/visuals.json`, then rebuilds the map. Original source images and previous versions are preserved. The upload never asks Claude or Codex to inspect the pixels. If you later ask an agent to inspect those files, normal provider data handling applies.
 - It stops by itself two hours after the last tab closes, and `node floorplan/serve.mjs --stop` stops it immediately.
 
 ## Floorplan Cloud waitlist
@@ -63,6 +65,10 @@ Your answer is kept in `~/.floorplan/settings.json`.
 - Input is checked strictly and saved as plain text.
 - Sign-ups are limited per IP address and overall, and the list has a size cap.
 - It runs as a single small instance, so a flood of requests can't run up costs.
+
+## Screen images and provenance
+
+Mockups and real screenshots may contain user data. Floorplan stores the image the user or agent explicitly imports; it does not redact pixels. Exports omit visuals unless selected. An export with visuals contains the images, source URLs, dates and supplied notes. Source URLs cannot embed usernames/passwords, but do not put access tokens in query strings. The importer records the source URL without visiting it. Missing images or removed screens keep their records for reassignment rather than silently deleting them.
 
 ## Secrets
 

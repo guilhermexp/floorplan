@@ -61,7 +61,7 @@ test('nothing to install: no dependencies and no install scripts', () => {
 test('the only commands pre-approved are the skill’s own scripts, and that list is fixed', () => {
   const front = /^---\n([\s\S]*?)\n---/.exec(read(path.join(SKILL, 'SKILL.md')).replace(/\r\n/g, '\n'))[1];
   // each script runs without a prompt while the skill is in use, so adding one is a deliberate change
-  const SCRIPTS = ['build.mjs', 'describe.mjs', 'open.mjs', 'plan.mjs', 'recent.mjs', 'refresh.mjs', 'scan.mjs', 'status.mjs'];
+  const SCRIPTS = ['build.mjs', 'describe.mjs', 'open.mjs', 'plan.mjs', 'recent.mjs', 'refresh.mjs', 'scan.mjs', 'status.mjs', 'visuals.mjs'];
   const granted = /^allowed-tools:\n((?: {2}- .*\n?)+)/m.exec(front + '\n')?.[1].trim().split('\n').map((l) => l.replace(/^\s*- /, '').trim());
   assert.deepEqual(granted, SCRIPTS.map((s) => `Bash(node \${CLAUDE_SKILL_DIR}/scripts/${s} *)`), `SKILL.md allowed-tools: exactly the skill's own scripts. ${UPDATE}`);
   const scripts = fs.readdirSync(path.join(SKILL, 'scripts')).filter((n) => !fs.statSync(path.join(SKILL, 'scripts', n)).isDirectory()).sort();
@@ -94,7 +94,7 @@ test('it reaches the internet in one place: the waitlist, only when someone sign
 
 test('it runs a fixed list of programs, and never through a shell', () => {
   const importers = find(/from\s+['"](?:node:)?child_process['"]/).map((x) => x.file).sort();
-  assert.deepEqual(importers, ['assets/serve.mjs', 'scripts/lib/common.mjs', 'scripts/open.mjs', 'scripts/refresh.mjs'], `files that start programs. ${UPDATE}`);
+  assert.deepEqual(importers, ['assets/serve.mjs', 'scripts/lib/common.mjs', 'scripts/open.mjs', 'scripts/refresh.mjs', 'scripts/visuals.mjs'], `files that start programs. ${UPDATE}`);
   // only spawn and execFileSync, which take a program and its arguments (regex .exec() is text matching)
   const names = find(/import\s*\{([^}]*)\}\s*from\s+['"](?:node:)?child_process['"]/).flatMap((x) => x.m[1].split(',').map((n) => n.trim()));
   assert.deepEqual([...new Set(names)].sort(), ['execFileSync', 'spawn'], `child_process functions used. ${UPDATE}`);
@@ -128,8 +128,8 @@ test('no code is downloaded, decoded or built from text at run time', () => {
   assert.match(read(path.join(SKILL, 'assets', 'serve.mjs')), /const coreSrc = fs\.readFileSync\(path\.join\(here, 'query\.mjs'\), 'utf8'\)/);
   assert.deepEqual(find(/\bimport\s*\(/).map((x) => `${x.file}:${x.line}`), [], `dynamic import. ${UPDATE}`);
   assert.deepEqual(find(/from\s+['"](?:node:)?(vm|worker_threads|inspector|wasi)['"]|new Worker\(|WebAssembly\./).map((x) => `${x.file}: ${x.text}`), [], `other ways to run code. ${UPDATE}`);
-  // decoding base64: only Health reading the middle of a token it found, to tell what kind of token it is
-  assert.deepEqual(find(/\batob\(|['"]base64['"]\s*\)/).filter((x) => x.file !== 'scripts/build.mjs').map((x) => x.file), ['scripts/lib/health.mjs'], `base64 decoding. ${UPDATE}`);
+  // base64: Health inspects token kinds; visual imports decode raster bytes and exports encode them, never executable text.
+  assert.deepEqual(find(/\batob\(|['"]base64['"]\s*\)/).filter((x) => x.file !== 'scripts/build.mjs').map((x) => x.file), ['scripts/lib/health.mjs', 'scripts/lib/visuals.mjs', 'scripts/lib/visuals.mjs'], `base64 image handling and token inspection. ${UPDATE}`);
   // no long opaque strings that could hide a payload (the build inlines the logo and fonts from files)
   assert.deepEqual(find(/[A-Za-z0-9+/=]{160,}/).map((x) => `${x.file}:${x.line}`), [], 'long encoded strings');
 });

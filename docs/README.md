@@ -2,6 +2,7 @@
 
 | Guide | What's in it |
 |---|---|
+| [Screen visuals](visuals.md) | Planned proposals and real captures, image versions, canvas, comparison, import and portable export |
 | [Getting started](getting-started.md) | Installing, making your first map, keeping it updated, planning an app before it exists, updating and removing the plugin |
 | [Floorplan in Codex](codex.md) | Installing and using Floorplan in Codex, and what's different from Claude Code |
 | [Using the map](using-the-map.md) | Every button, view, panel, shortcut and right-click menu, and what a blueprint adds |

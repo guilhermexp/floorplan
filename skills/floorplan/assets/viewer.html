@@ -758,10 +758,20 @@ document.body.classList.toggle('no-recent', !recentShown);
 const symOf = (item) => { const m = /^s:(.*)#(\d+)$/.exec(item); const f = files.get(m[1]); return { f, s: f.s[+m[2]] }; };
 function humanize(s) { s = s.replace(/[_\-.]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim(); return s.charAt(0).toUpperCase() + s.slice(1); }
 
+// Visual references belong to screens but stay outside code/file counts.
+const visualRefs = new Map((G.visuals || []).filter((v) => !v.unresolved).map((v) => ['v:' + v.id, v]));
+for (const [id, v] of visualRefs) if (v.file && files.has(v.file)) parentOf.set(id, 'f:' + v.file);
+const itemExists = (id) => visualRefs.has(id) || Q.exists(id);
+const visualKind = (v) => v.kind === 'capture' ? 'Captura real' : 'Proposta';
+function visualSrc(v) {
+  const s = String(v.src || '');
+  return !v.missing && ((/^visuals\/[a-zA-Z0-9_./ -]+\.(png|jpe?g|webp)$/i.test(s) && !s.split('/').some((p) => p === '..' || p === '.' || !p)) || /^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/i.test(s)) ? s : '';
+}
 function info(item) {
   if (item === 'root') return { type: 'root', name: G.project.name, desc: G.project.summary || '', kind: 'root' };
   if (item === 'q:answer') return { type: 'answer', name: state.answer?.title || 'Answer', desc: state.answer?.question || '', kind: 'answer' };
   const t = item.slice(0, 2);
+  if (t === 'v:' && visualRefs.has(item)) { const v = visualRefs.get(item); return { type: 'visual', name: v.title, desc: [visualKind(v), v.version, v.viewport, v.state].filter(Boolean).join(' · '), kind: 'ui', visual: v }; }
   if (t === 'n:') { const n = nodes.get(item.slice(2)); return { type: 'node', name: n.label, desc: n.summary, kind: n.kind, n }; }
   if (t === 'd:') { const d = dirs.get(item); return { type: 'dir', name: humanize(d.path.split('/').pop()), desc: `${plural(d.files.length, 'file')} in ${d.path}/`, kind: 'dir', d, path: d.path + '/' }; }
   if (t === 'f:') { const f = files.get(item.slice(2)); return { type: 'file', name: f.name, desc: f.d, kind: 'file', f, path: f.p }; }
@@ -776,8 +786,8 @@ const nameOf = (item) => info(item.startsWith('x:') ? connEntity(item) : item).n
 const visibleKids = (item) => (kids.get(item) || []).filter((k) => technical() || !k.startsWith('s:'));
 const drillable = (item) => /^(n:|d:|f:)/.test(item) && visibleKids(item).length > 0;
 const methodVar = (m) => `var(--m-${m in METHODS ? m : 'ANY'})`;
-const colorOf = (i) => i.type === 'route' ? methodVar(i.r.m) : `var(--n-${i.type === 'node' ? i.kind : i.type === 'symbol' ? 'symbol' : i.type})`;
-const iconKey = (i) => i.type === 'node' ? i.kind : i.type === 'symbol' ? i.kind : i.type;
+const colorOf = (i) => i.type === 'visual' ? (i.visual.kind === 'capture' ? '#34d399' : '#a78bfa') : i.type === 'route' ? methodVar(i.r.m) : `var(--n-${i.type === 'node' ? i.kind : i.type === 'symbol' ? 'symbol' : i.type})`;
+const iconKey = (i) => i.type === 'visual' ? 'ui' : i.type === 'node' ? i.kind : i.type === 'symbol' ? i.kind : i.type;
 
 function statsOf(item) {
   const i = info(item);
@@ -911,7 +921,7 @@ function buildView(container) {
 // Cards carry only what you read at a glance: icon, name, description, one count. Paths, kinds and
 // sizes live in the hover tooltip and the details panel.
 // [width, min height]
-const SIZES = { node: [300, 128], dir: [272, 110], file: [284, 110], module: [284, 110], route: [300, 128], symbol: [260, 100] };
+const SIZES = { visual: [300, 500], node: [300, 128], dir: [272, 110], file: [284, 110], module: [284, 110], route: [300, 128], symbol: [260, 100] };
 const NOTE_H = 64;
 const FOOT_H = 30;   // the footer row: size on the left, recent-work pill on the right
 const TITLE2_H = 10; // a title that wraps onto a second line
@@ -938,6 +948,10 @@ function cardExtraH(item) {
 }
 function cardHTML(item) {
   const i = info(item);
+  if (i.type === 'visual') {
+    const v = i.visual, src = visualSrc(v);
+    return `<div class="card visual-card" style="--c:${colorOf(i)}"><div class="head"><span class="visual-badge ${h(v.kind)}">${visualKind(v)}</span>${v.approved ? '<span class="visual-approved">Aprovada</span>' : ''}</div><div class="title">${h(v.title)}</div><div class="visual-image">${src ? `<img src="${h(src)}" alt="${h(v.title)}" loading="lazy" decoding="async" draggable="false">` : '<span>Imagem indisponível</span>'}</div><div class="desc">${h([v.version, v.viewport, v.state].filter(Boolean).join(' · '))}</div><div class="meta">Dois cliques para ampliar</div></div>`;
+  }
   let head = '', title = '', desc = '', cls = i.type;
   const dsc = (t, lines = 2) => t ? `<div class="desc" style="--lines:${lines}">${h(t)}</div>` : `<div class="desc empty">No description yet</div>`;
   if (i.type === 'node') {
@@ -1203,7 +1217,7 @@ function itemMenu(id) {
     id.startsWith('x:') ? { label: `Go to ${i.name}`, icon: 'right', hint: '2×click', run: () => reveal(real) }
       : drillable(real) && state.container !== real ? { label: 'Open', icon: 'drill', hint: '2×click', run: () => open(real) } : null,
     state.container === 'q:answer' && !id.startsWith('x:') ? { label: 'Show on the map', icon: 'external', run: () => reveal(real) } : null,
-    EXPORTED ? null : { label: 'Ask about this', icon: 'spark', run: () => addAskContext(real) },
+    EXPORTED ? null : { label: i.type === 'visual' ? 'Ask about this screen' : 'Ask about this', icon: 'spark', run: () => addAskContext(real) },
     { label: 'Show details', icon: 'panel', run: () => { setPanel(true); if (id.startsWith('x:')) reveal(real); else select(id); } },
     '-',
     path ? { label: i.type === 'route' ? 'Copy endpoint' : 'Copy path', icon: 'copy', run: () => copy(path) } : null,
@@ -1372,6 +1386,7 @@ async function go(container, { select: sel = null, push = true, zoomFrom = null,
   await render({ after: () => { vp.classList.add('anim'); requestAnimationFrame(() => { vp.style.opacity = '1'; }); setTimeout(() => vp.classList.remove('anim'), 340); renderPanel(); if (after) after(); } });
 }
 function open(item) {
+  if (visualRefs.has(item)) { emit('visual-open', visualRefs.get(item)); return; }
   if (item.startsWith('x:')) { reveal(connEntity(item)); return; }
   if (item.startsWith('m:')) return;
   if (state.container === 'q:answer' && !drillable(item)) { reveal(item); return; }
@@ -1381,6 +1396,7 @@ function open(item) {
 }
 function up() { if (state.container === 'root') return; closeSheet(); const from = state.container; go(parentOf.get(from) || 'root', { select: from }); }
 function reveal(item) {
+  if (visualRefs.has(item)) { emit('visual-reveal', visualRefs.get(item)); return; }
   if (item === 'root') return go('root');
   const container = parentOf.get(item) || 'root';
   go(container, { select: item, after: () => { const g = state.chipEls.get(item); if (g) { g.classList.remove('flash'); void g.getBBox(); g.classList.add('flash'); centerOn(item); } } });
@@ -1522,7 +1538,7 @@ function renderPanel() {
   else if (sel) html = itemPanel(sel);
   else html = state.container === 'root' ? overviewPanel() : state.container === 'q:answer' ? answerPanel() : itemPanel(state.container);
   // extensions add sections: 'overview' on the codebase panel, 'item' on a selected/opened item
-  const where = sel && typeof sel === 'object' ? null : sel ? 'item' : state.container === 'root' ? 'overview' : state.container === 'q:answer' ? null : 'item';
+  const where = sel && typeof sel === 'object' ? null : sel ? 'item' : state.container === 'root' ? 'overview' : state.container === 'q:answer' ? 'board' : 'item';
   const target = sel && typeof sel === 'string' ? (sel.startsWith('x:') ? connEntity(sel) : sel.startsWith('m:') ? 'f:' + sel.slice(2) : sel) : state.container;
   const extOut = [];
   if (custom.panel) { html = custom.panel.html; extOut.push(...(custom.panel.bind ? [{ bind: custom.panel.bind, whole: true }] : [])); }
@@ -2136,6 +2152,7 @@ async function askViaApp(question, progress, mode = 'ask') {
 askState.context = [];
 /** Pin a map item to the next question ("Ask about this"). */
 function addAskContext(id) {
+  if (visualRefs.has(id)) id = 'f:' + visualRefs.get(id).file;
   if (!Q.exists(id)) return;
   askState.context = [...askState.context.filter((x) => x !== id), id].slice(-3);
   renderChips();
@@ -2312,9 +2329,9 @@ function showModal({ title = '', html = '', actions = [] } = {}) {
 }
 let toastTimer = null;
 function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200); }
-function showBoard({ title, question = '', answer = '', items = [], steps = [], kind = '', icon: ic = '' }) {
-  const clean = (arr) => (arr || []).map((x) => typeof x === 'string' ? { id: x, note: '' } : x).filter((x) => x && Q.exists(String(x.id))).map((x) => ({ id: String(x.id), note: String(x.note || '') }));
-  const a = { title: title || 'Board', question, answer, items: clean(items).slice(0, 24), steps: clean(steps), followups: [], ...(kind ? { kind } : {}), ...(ic ? { icon: ic } : {}) };
+function showBoard({ title, question = '', answer = '', items = [], steps = [], kind = '', icon: ic = '', screen = null }) {
+  const clean = (arr) => (arr || []).map((x) => typeof x === 'string' ? { id: x, note: '' } : x).filter((x) => x && itemExists(String(x.id))).map((x) => ({ id: String(x.id), note: String(x.note || '') }));
+  const a = { title: title || 'Board', question, answer, items: clean(items).slice(0, screen ? 120 : 24), steps: clean(steps), followups: [], ...(screen ? { screen } : {}), ...(kind ? { kind } : {}), ...(ic ? { icon: ic } : {}) };
   if (!a.items.length) { toast('Nothing on the map matches that.'); return; }
   state.answer = a; askState.last = a;
   go('q:answer', { force: true });
@@ -2325,14 +2342,14 @@ function playFlow({ title = 'Tour', description = '', steps = [], inPlace = fals
   state.flow = { f: { id: 'tmp-' + Date.now(), title, description, steps: st }, i: 0, inPlace };
   flowStep();
 }
-const ext = { sections: { overview: [], item: [] }, listeners: {} };
+const ext = { sections: { overview: [], item: [], board: [] }, listeners: {} };
 const custom = { panel: null };
 function emit(event, data) { for (const fn of ext.listeners[event] || []) { try { fn(data); } catch (e) { console.error('floorplan extension', e); } } }
 window.Floorplan = Object.freeze({
   version: 1,
   graph: G, query: Q, state, agent: AGENT, exported: EXPORTED,
   // model helpers
-  info, chain, children: (id) => visibleKids(id), parentOf: (id) => parentOf.get(id), exists: (id) => Q.exists(id),
+  info, chain, children: (id) => visibleKids(id), parentOf: (id) => parentOf.get(id), exists: itemExists, visualSrc,
   files, nodes, routes, colorOf, iconKey,
   // html helpers
   h, icon, iconI, fmt, plural, md,

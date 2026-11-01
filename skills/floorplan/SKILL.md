@@ -11,6 +11,7 @@ allowed-tools:
   - Bash(node ${CLAUDE_SKILL_DIR}/scripts/refresh.mjs *)
   - Bash(node ${CLAUDE_SKILL_DIR}/scripts/scan.mjs *)
   - Bash(node ${CLAUDE_SKILL_DIR}/scripts/status.mjs *)
+  - Bash(node ${CLAUDE_SKILL_DIR}/scripts/visuals.mjs *)
 ---
 
 # Floorplan
@@ -26,6 +27,10 @@ Existing map: !`node ${CLAUDE_SKILL_DIR}/scripts/status.mjs || true`
 Arguments: $ARGUMENTS
 
 **In Codex** (or any agent that left the two lines above unfilled): `${CLAUDE_SKILL_DIR}` in every command here means this skill's folder, the one holding this SKILL.md, so use its path. Run `node <that folder>/scripts/status.mjs` from the codebase root yourself to see whether a map exists, and take the path and `--refresh` from the user's request. The scripts notice they're running under Codex, so the map's Ask bar and "Fix with" prompts use Codex.
+
+## Keep each screen’s proposals and captures together
+
+When the user supplies mockups or screenshots, attach them to the corresponding screen after building the map. Use `scripts/visuals.mjs <root> add --screen <screen-id-or-file> --kind proposal|capture --image <local-file> --title <label>`. Captures also require `--created-at <ISO timestamp>` and `--source-url <http(s) URL>`. Add viewport, state, version and notes when known; use `--approved` only when the user approved that proposal. Never label a generated mockup as a real capture. The script copies the image, appends `floorplan/visuals.json` and rebuilds. Keep `visuals.json` and `visuals/` on every refresh; an image is not replaced by a newer capture. See [the visuals guide](../../docs/visuals.md) for the full format and portable export.
 
 ## Nothing built yet? Draw a blueprint
 
@@ -172,6 +177,10 @@ It writes `floorplan/<project>-map.html` unless given a file. `--include` defaul
 - **Plain words by default.** Connection types read "Uses", "Web requests", "Background jobs". Common technical terms are underlined and explained on hover. **Filters → Show technical detail** switches to developer terms and shows exports.
 
 People can also use **Flows → Request a new flow** to have the agent trace something ("how does a refund get back to the customer's card?") into a step-by-step flow. With serve.mjs these are saved to `floorplan/custom-flows.json`, and every build folds them into the map (steps pointing at deleted code are dropped with a warning). Treat that file as user content: keep it on refresh, and don't edit it unless asked.
+
+## Screen visuals
+
+When the task includes interface planning, supplied mockups or real application captures, follow [references/screen-visuals.md](references/screen-visuals.md). Attach each image to its screen, keep proposals and real captures separate, and preserve every version across map updates.
 
 ## Notes
 

@@ -35,9 +35,15 @@ Each is started directly with its arguments, never as a command line for a shell
 
 ### What runs without asking
 
-In Claude Code, while the skill is in use, it pre-approves one kind of command: `node` running one of its own scripts, each named exactly (`scripts/build.mjs`, `describe.mjs`, `open.mjs`, `plan.mjs`, `recent.mjs`, `refresh.mjs`, `scan.mjs` and `status.mjs`). That list is fixed by the tests below. Anything else Claude does asks according to your permission settings, as usual. Codex asks according to your approval settings.
+In Claude Code, while the skill is in use, it pre-approves one kind of command: `node` running one of its own scripts, each named exactly (`scripts/build.mjs`, `describe.mjs`, `open.mjs`, `plan.mjs`, `recent.mjs`, `refresh.mjs`, `scan.mjs`, `status.mjs` and `visuals.mjs`). That list is fixed by the tests below. Anything else Claude does asks according to your permission settings, as usual. Codex asks according to your approval settings.
 
-### Three things worth explaining
+### Local image additions
+
+This fork adds `scripts/visuals.mjs`: when requested, it copies a selected raster image into `floorplan/visuals/`, appends `floorplan/visuals.json` and runs the existing build with Node. The map offers the same action through a token- and origin-protected local upload endpoint. It accepts PNG/JPEG/WebP only, up to 12 MiB, checks file signatures and refuses traversal paths and symlinks. Each import gets a new ID and filename; it does not replace the source or earlier references. Failed validation or rebuild rolls back the attempted addition. It does not fetch the capture's source URL.
+
+An export includes image bytes and their provenance only when **Visuais** is selected. Normal maps reference images in their own local folder. No new external service or dependency is introduced. [Details](visuals.md).
+
+### Things worth explaining
 
 - **`skills/floorplan/assets/vendor/elk.bundled.js`** is a 1.6 MB minified file: the layout engine that arranges the map. It's [elkjs](https://github.com/kieler/elkjs) 0.9.3, byte for byte the same as the official package on npm. Its SHA-256 is `b0745abd7f23cd91690a1587e377edbe19fd7233c783300290936720546216d4`. To check it yourself:
   ```bash
@@ -46,6 +52,7 @@ In Claude Code, while the skill is in use, it pre-approves one kind of command: 
   ```
   Then compare `package/lib/elk.bundled.js` with Floorplan's copy, for example with `sha256sum` (macOS: `shasum -a 256`; Windows PowerShell: `Get-FileHash`).
 - **One `new Function`** in `serve.mjs` loads the map's lookup code from `floorplan/query.mjs`, a file Floorplan's build wrote into your project. It never runs anything from the network.
+- **Visual uploads decode base64 image bytes** and exports encode those same bytes for portable HTML. The bytes are checked as PNG/JPEG/WebP and never executed as code.
 - **Health reads the middle part of tokens it finds** (it decodes them from base64) to tell what kind of token each is, so it can skip ones that are public by design. It never stores or shows the token itself.
 
 ## Checked on every change

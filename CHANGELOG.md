@@ -1,3 +1,8 @@
+# Local changes — screen visuals
+
+- Keep mockups and actual screenshots on their screen canvas, with versions, source and comparison.
+- Import through the local UI or agent CLI; preserve image history on refresh and embed it in optional HTML exports.
+
 # Changelog
 
 ## 0.6.0 (2026-10-31)

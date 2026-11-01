@@ -6,13 +6,16 @@ Floorplan writes to exactly two places in your project: the `floorplan/` folder,
 
 | File | What it is | Edit it? |
 |---|---|---|
-| `index.html` | The map: one self-contained page | No. Rebuilt every time |
+| `index.html` | The map page; imported visuals use sibling image files (portable exports embed them) | No. Rebuilt every time |
 | `graph.json` | Everything the map shows, as data | No. Rebuilt every time |
 | `architecture.json` | The parts of your app, outside services, extra connections, flows and the tour | **Yes** |
 | `descriptions/*.json` | The name and description of every file and endpoint, one file per part | **Yes** |
 | `plan.json` | Blueprints only: the planned files, endpoints and screens, who may use each endpoint, the stack, assumptions and open questions. Names and descriptions live here instead of `descriptions/` | **Yes** |
 | `recent-work.json` | What was just worked on, and why. Replaced on every update | Rarely. The AI writes it |
 | `custom-flows.json` | Flows requested from the map | Only to delete one |
+| `visuals.json` | User-owned mockups and captures, with screen associations and provenance | **Yes**, or use the import UI/CLI |
+| `visuals/*` | Copied PNG/JPEG/WebP references; preserved across refresh | Add through the importer; preserve files referenced by the manifest |
+| `visuals-store.mjs` | Generated validation, local import and export helper | No |
 | `serve.mjs` | Serves the map locally and answers questions through the Claude Code CLI or Codex | No |
 | `query.mjs` | Looks things up in the map from the command line; Claude and Codex use it too | No |
 | `artifact.html` | A copy for opening in the Claude app, only if you asked for one | No |

@@ -12,6 +12,7 @@ import { fallbackFileName, fallbackRouteName, routeKey } from './lib/names.mjs';
 import { buildHealth } from './lib/health.mjs';
 import { buildPlanHealth } from './lib/blueprint.mjs';
 import { buildScreens } from './lib/screens.mjs';
+import { buildVisuals } from './lib/visuals.mjs';
 import { writeClaudeMd } from './lib/claudemd.mjs';
 import { detectAgent } from './lib/agent.mjs';
 
@@ -417,6 +418,7 @@ const graph = {
 // a blueprint has no code to check, so its Health is a design review of the plan (computed after screens)
 if (!scan.blueprint) try { graph.health = buildHealth({ graph, scan, arch, root }); } catch (e) { warn(`health check failed: ${e.message}`); graph.health = { issues: [] }; }
 try { graph.screens = buildScreens({ graph, scan, arch, root }); } catch (e) { warn(`screen detection failed: ${e.message}`); graph.screens = []; }
+try { graph.visuals = buildVisuals({ graph, outDir, warn }); } catch (e) { fail(`visuals.json: ${e.message}`); }
 if (scan.blueprint) try { graph.health = buildPlanHealth({ graph, scan }); } catch (e) { warn(`design review failed: ${e.message}`); graph.health = { issues: [] }; }
 fs.mkdirSync(outDir, { recursive: true });
 const trackedWarning = keepOutOfGit(outDir);
@@ -455,8 +457,9 @@ fs.writeFileSync(path.join(outDir, 'query.mjs'), `${graphQuery}
 // ---- cli ----
 ${fs.readFileSync(path.join(SKILL_DIR, 'assets', 'query-cli.mjs'), 'utf8')}`);
 fs.copyFileSync(path.join(SKILL_DIR, 'assets', 'serve.mjs'), path.join(outDir, 'serve.mjs'));
-// a blueprint can be changed from the map: serve.mjs redraws it with this skill's plan.mjs and build.mjs
-if (scan.blueprint) { fs.mkdirSync(path.join(outDir, '.cache'), { recursive: true }); fs.writeFileSync(path.join(outDir, '.cache', 'skill.json'), JSON.stringify({ dir: SKILL_DIR })); }
+fs.copyFileSync(path.join(SKILL_DIR, 'scripts', 'lib', 'visuals.mjs'), path.join(outDir, 'visuals-store.mjs'));
+// The local server rebuilds after image uploads; blueprints also use this path for plan changes.
+{ fs.mkdirSync(path.join(outDir, '.cache'), { recursive: true }); fs.writeFileSync(path.join(outDir, '.cache', 'skill.json'), JSON.stringify({ dir: SKILL_DIR })); }
 // the logo and tab icon are inlined so the map stays one self-contained file
 function dataUri(name) { return 'data:image/png;base64,' + fs.readFileSync(path.join(SKILL_DIR, 'assets', name)).toString('base64'); }
 function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]); }
@@ -466,15 +469,16 @@ if (hs && (hs.high || hs.medium || hs.low)) {
   report.push(`${scan.blueprint ? 'DESIGN REVIEW' : 'HEALTH'}  ${hs.high} important · ${hs.medium} worth fixing · ${hs.low} minor`);
   for (const i of graph.health.issues.filter((x) => x.severity !== 'low').slice(0, 8)) report.push(`  [${i.severity}] ${i.title}`);
 }
+if (graph.visuals?.length) report.push(`VISUALS  ${graph.visuals.length} references`);
 if (graph.screens?.length) report.push(`SCREENS  ${graph.screens.length} detected`);
 report.push(graph.recent
   ? `RECENT WORK  ${graph.recent.items.length} card(s) highlighted across ${graph.recent.tasks.length} task(s)`
   : `RECENT WORK  none highlighted${fs.existsSync(recentFile) ? '' : ' (no recent-work.json)'}`);
 // point future Claude Code sessions in this project at the map. Codex has no personal, uncommitted
 // equivalent (AGENTS.md is shared with the team), so a map built by Codex leaves the project's notes alone.
+if (scan.blueprint) report.push('BLUEPRINT  planned, not built yet: drawn from floorplan/plan.json');
 if (agent === 'codex') report.push('AGENT  Codex: questions on the map run through Codex');
-else if (scan.blueprint) report.push('BLUEPRINT  planned, not built yet: drawn from floorplan/plan.json');
-else if (!args['no-claude-md']) report.push(`CLAUDE.LOCAL.MD  ${writeClaudeMd(root, outDir, { add: !!args['claude-md'] })}`);
+else if (!scan.blueprint && !args['no-claude-md']) report.push(`CLAUDE.LOCAL.MD  ${writeClaudeMd(root, outDir, { add: !!args['claude-md'] })}`);
 report.push(trackedWarning ? `GIT  ! ${trackedWarning}` : 'GIT  floorplan/ is kept out of git (it ignores itself)');
 report.push('');
 report.push(`✓ wrote ${path.relative(root, path.join(outDir, 'index.html'))} (${fmtNum(Math.round(html.length / 1024))} KB) and graph.json`);
