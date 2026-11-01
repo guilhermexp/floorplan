@@ -3,6 +3,9 @@
 - Keep mockups and actual screenshots on their screen canvas, with versions, source and comparison.
 - Import through the local UI or agent CLI; preserve image history on refresh and embed it in optional HTML exports.
 
+- Browse full-size previews inside the gallery, with thumbnails, arrows, keyboard navigation and filtered version history.
+- Portuguese is the default interface language; switch to English from the header and keep the preference across reloads.
+
 # Changelog
 
 ## 0.6.0 (2026-10-31)

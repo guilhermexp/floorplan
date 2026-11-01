@@ -2,6 +2,16 @@
 
 Each screen can keep the interface you planned and screenshots of what you actually built. A new capture is another record; it never replaces the original proposal. The manifest and images live in `floorplan/`, survive rebuilds and refreshes, and are ignored by git with the rest of the map.
 
+## Browse and preview
+
+In **Visuais**, click a thumbnail to preview its image inside the gallery. Previous/next buttons and the left/right arrow keys browse all versions in the current search and filter. The counter shows the current image and total. **Miniaturas** returns to the full grid; **Ampliar** opens a larger image; **Abrir no canvas** navigates to its screen. Missing images and empty searches have an explicit empty state.
+
+On narrow screens, the preview uses the gallery width and **Miniaturas** returns to browsing. On wider screens, thumbnails remain alongside the preview.
+
+## Interface language
+
+Portuguese (Brazil) is the default. Use the **PT/EN** globe button in the header to switch to English. The browser remembers the choice using `floorplan.language`; portable exports include both languages. Menus, buttons, help, tooltips and the technical glossary follow the selected language. Graph identifiers, file paths, source code, typed input and image pixels retain their original contents.
+
 ## Add an image from the map
 
 Serve the map with its generated `floorplan/serve.mjs`. In **Visuais**, choose a screen and **Adicionar visual**. Choose **Proposta** for a mockup or **Captura real** for a screenshot of a running app. A real capture requires its capture time and source URL. Label its viewport, state and version so comparisons have context. Uploading a file does not take a screenshot or generate an image: it attaches the image you selected.
@@ -91,4 +101,4 @@ This embeds the selected visual catalog's image bytes into the HTML. The copy ca
 
 ## Uberdog example
 
-The accompanying Uberdog map contains 86 planned screens/states and four imported approved proposals (T01, T04, T11 and T19). It has zero real implementation captures. The 82 screens without images remain visible in the catalog. This is a test of organizing an actual planning project, not evidence that Uberdog has been implemented.
+The accompanying Uberdog map contains 86 planned screens/states and 89 proposals, including four previously approved proposals (T01, T04, T11 and T19). All screens have an image; three screens also retain a revised version. It has zero real implementation captures. This is a test of organizing an actual planning project, not evidence that Uberdog has been implemented.

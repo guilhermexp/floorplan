@@ -58,6 +58,198 @@
     ['OAuth', 'The standard behind "Sign in with…" buttons: it lets one app use another on your behalf without sharing your password.', 'OAuth'],
   ];
 
+  const PORTUGUESE = {
+  "API": [
+    "API",
+    "Forma de comunicação entre programas: um faz uma solicitação e o outro responde."
+  ],
+  "Endpoint": [
+    "Endpoint",
+    "Uma operação específica que o aplicativo recebe, com seu próprio endereço de acesso."
+  ],
+  "Webhook": [
+    "Webhook",
+    "Mensagem enviada automaticamente por outro serviço quando algo acontece, como a confirmação de um pagamento."
+  ],
+  "Server": [
+    "Servidor",
+    "Computador que executa as regras do aplicativo e responde às solicitações das telas."
+  ],
+  "Frontend": [
+    "Interface",
+    "Parte do aplicativo que as pessoas veem e usam: telas, botões e formulários."
+  ],
+  "Backend": [
+    "Backend",
+    "Parte que armazena os dados, aplica as regras e conversa com outros serviços."
+  ],
+  "Database": [
+    "Banco de dados",
+    "Onde o aplicativo mantém seus registros para preservá-los entre as execuções."
+  ],
+  "Record": [
+    "Registro",
+    "Uma entrada armazenada no banco, como um pedido ou cliente. Uma tabela reúne registros do mesmo tipo."
+  ],
+  "Model": [
+    "Modelo",
+    "Descrição no código de como um tipo de registro é armazenado no banco."
+  ],
+  "Query": [
+    "Consulta",
+    "Uma solicitação ao banco de dados, como buscar os pedidos de hoje."
+  ],
+  "Queue": [
+    "Fila",
+    "Lista de tarefas que aguardam processamento em segundo plano."
+  ],
+  "Background job": [
+    "Tarefa em segundo plano",
+    "Atividade executada sem exigir que a pessoa aguarde na tela."
+  ],
+  "Scheduled job": [
+    "Tarefa agendada",
+    "Atividade executada automaticamente em horários definidos."
+  ],
+  "Environment variable": [
+    "Variável de ambiente",
+    "Configuração mantida fora do código, que pode variar entre teste e produção."
+  ],
+  "Secret": [
+    "Credencial secreta",
+    "Senha ou chave de acesso a outro serviço. Deve ser protegida e mantida fora do código."
+  ],
+  "Deploy": [
+    "Publicação",
+    "Disponibilização de uma nova versão do aplicativo para uso."
+  ],
+  "Migration": [
+    "Migração",
+    "Alteração na estrutura dos dados, como adicionar um campo a uma tabela."
+  ],
+  "Cache": [
+    "Cache",
+    "Cópia temporária de dados usada para acelerar o acesso."
+  ],
+  "Sign-in": [
+    "Autenticação",
+    "Verificação da identidade de uma pessoa antes de permitir o acesso."
+  ],
+  "Permissions": [
+    "Permissões",
+    "Regras que definem quem pode executar cada ação."
+  ],
+  "Session": [
+    "Sessão",
+    "Forma de manter o acesso autenticado sem pedir a senha em cada tela."
+  ],
+  "Token": [
+    "Token",
+    "Credencial digital verificada pelo aplicativo em solicitações de acesso."
+  ],
+  "SDK": [
+    "SDK",
+    "Conjunto de ferramentas fornecido por uma empresa para integrar seu serviço."
+  ],
+  "Repository": [
+    "Repositório",
+    "Pasta com o código do projeto e seu histórico de alterações."
+  ],
+  "Component": [
+    "Componente",
+    "Bloco reutilizável da interface, como um botão, formulário ou tabela."
+  ],
+  "Route": [
+    "Rota",
+    "Endereço atendido pelo aplicativo, associado a uma página ou operação."
+  ],
+  "Request": [
+    "Requisição",
+    "Mensagem que pede ao servidor uma operação ou informação, recebendo uma resposta."
+  ],
+  "JSON": [
+    "JSON",
+    "Formato de texto estruturado usado para trocar dados entre programas."
+  ],
+  "REST": [
+    "REST",
+    "Forma comum de organizar APIs em endereços que representam recursos, como pedidos e produtos."
+  ],
+  "HTTP method": [
+    "Método HTTP",
+    "Tipo da operação: GET consulta, POST cria, PUT/PATCH alteram e DELETE remove."
+  ],
+  "HTTP": [
+    "HTTP",
+    "Protocolo de comunicação da web. HTTPS protege essa comunicação com criptografia."
+  ],
+  "CDN": [
+    "CDN",
+    "Rede de servidores que entrega arquivos a partir de locais próximos ao visitante."
+  ],
+  "Storage bucket": [
+    "Armazenamento de arquivos",
+    "Espaço na nuvem para imagens, anexos e outros arquivos."
+  ],
+  "Pub/Sub": [
+    "Pub/Sub",
+    "Serviço de mensagens em que uma parte publica eventos e outras os recebem para processar."
+  ],
+  "MCP": [
+    "MCP",
+    "Padrão para conectar assistentes de IA a ferramentas e informações de outros aplicativos."
+  ],
+  "Next.js": [
+    "Next.js",
+    "Ferramenta para criar sites e aplicativos web usando React."
+  ],
+  "React": [
+    "React",
+    "Biblioteca para criar interfaces interativas com componentes reutilizáveis."
+  ],
+  "Flask": [
+    "Flask",
+    "Ferramenta Python para criar servidores web."
+  ],
+  "SQLAlchemy": [
+    "SQLAlchemy",
+    "Ferramenta Python para consultar e salvar registros sem escrever todos os comandos do banco manualmente."
+  ],
+  "Postgres": [
+    "Postgres",
+    "Banco de dados amplamente utilizado. RDS e Cloud SQL oferecem hospedagem gerenciada de bancos."
+  ],
+  "Docker": [
+    "Docker",
+    "Forma de empacotar um aplicativo e suas dependências para executá-lo em ambientes consistentes."
+  ],
+  "Cloud Run": [
+    "Cloud Run",
+    "Serviço do Google para executar aplicativos e tarefas sem gerenciar diretamente os servidores."
+  ],
+  "Middleware": [
+    "Middleware",
+    "Etapa intermediária de uma requisição, usada para verificações como autenticação."
+  ],
+  "Blueprint": [
+    "Agrupamento de rotas",
+    "No Flask, conjunto de operações relacionadas, como todas as operações de pedidos."
+  ],
+  "Tests": [
+    "Testes",
+    "Verificações automáticas do comportamento do código antes de disponibilizar alterações."
+  ],
+  "Script": [
+    "Script",
+    "Programa de apoio para tarefas como importar ou corrigir dados."
+  ],
+  "OAuth": [
+    "OAuth",
+    "Padrão de autorização que permite integrar serviços sem compartilhar a senha da conta."
+  ]
+};
+  for (const term of TERMS) { const name = PORTUGUESE[term[0]]?.[0]; if (name && name !== term[0]) term.push(name); }
+
   const exact = new Map(), loose = new Map(), alts = [];
   TERMS.forEach(([name, text, ...aliases], i) => {
     for (let a of aliases) {
@@ -85,7 +277,7 @@
     for (const el of targets) {
       if (skipped(el, scope)) continue;
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
-        acceptNode: (t) => !t.nodeValue.trim() || skipped(t.parentElement, el) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+        acceptNode: (t) => window.FloorplanI18n?.ownsText(t) || !t.nodeValue.trim() || skipped(t.parentElement, el) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
       });
       const texts = [];
       while (walker.nextNode()) texts.push(walker.currentNode);
@@ -156,6 +348,7 @@
   document.body.appendChild(pop);
 
   let current = null, showT = 0, hideT = 0;
+  window.addEventListener('floorplan-language-change', () => hide(true));
   function show(el) {
     clearTimeout(hideT);
     if (current === el) return;
@@ -165,7 +358,8 @@
     current = el;
     el.classList.add('on');
     el.setAttribute('aria-describedby', 'sc-gloss');
-    pop.innerHTML = `<b>${SC.h(term[0])}</b>${SC.h(term[1])}`;
+    const localized = window.FloorplanI18n?.get() !== 'en' ? PORTUGUESE[term[0]] || term : term;
+    pop.innerHTML = `<b>${SC.h(localized[0])}</b>${SC.h(localized[1])}`;
     const r = el.getClientRects()[0] || el.getBoundingClientRect();
     const pw = pop.offsetWidth, ph = pop.offsetHeight, gap = 8;
     const x = Math.max(12, Math.min(r.left, innerWidth - pw - 12));

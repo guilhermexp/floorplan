@@ -7,7 +7,7 @@
   const forScreen = (s) => records.filter((v) => !v.unresolved && v.screen === s.id);
   const kindName = (v) => v.kind === 'capture' ? 'Captura real' : 'Proposta';
   const usable = (v) => v && !v.missing && !!SC.visualSrc(v);
-  const stamp = (v) => v.createdAt ? new Date(v.createdAt).toLocaleString('pt-BR') : 'Data não informada';
+  const stamp = (v) => v.createdAt ? new Date(v.createdAt).toLocaleString(window.FloorplanI18n?.get() || 'pt-BR') : 'Data não informada';
   const badge = (v) => `<span class="visual-badge ${h(v.kind)}">${kindName(v)}</span>${v.approved ? '<span class="visual-approved">Aprovada</span>' : ''}`;
   const meta = (v) => [v.version, v.viewport, v.state].filter(Boolean).map(h).join(' · ');
   const image = (v, cls = '') => usable(v) ? `<img class="${cls}" src="${h(SC.visualSrc(v))}" alt="${h(v.title)}" loading="lazy" decoding="async">` : '<span class="vs-empty">Imagem indisponível. O registro foi preservado.</span>';
@@ -82,6 +82,33 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
 .vs-form textarea { resize:vertical; }
 .vs-error { padding:12px; color:var(--warn-text); background:var(--warn-bg); border-radius:10px; font-size:13px; }
 .vs-notice { color:var(--text-3); font-size:12px; line-height:1.6; padding:12px 0; }
+.vs-browser { min-height:0; }
+.vs-preview-pane[hidden] { display:none; }
+.vs-browsing { height:min(940px,calc(100dvh - 32px)); overflow:hidden; }
+.vs-browsing .vs-body { display:flex; flex-direction:column; min-height:0; height:calc(100% - 100px); }
+.vs-browsing .vs-coverage { display:none; }
+.vs-browsing .vs-toolbar { flex:none; margin-bottom:6px; }
+.vs-browsing [data-count] { margin:0 0 8px; padding:6px 0; flex:none; }
+.vs-browsing .vs-browser { display:grid; grid-template-columns:280px minmax(0,1fr); gap:24px; flex:1; overflow:hidden; }
+.vs-browsing .vs-library { overflow:auto; min-height:0; padding:2px 8px 4px 2px; }
+.vs-browsing .vs-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.vs-browsing .vs-thumb { height:130px; }
+.vs-browsing .vs-screen-copy { padding:10px; }
+.vs-browsing .vs-screen-copy small { display:none; }
+.vs-browsing .vs-screen-copy strong { font-size:11px; margin:0; }
+.vs-screen[aria-current=true] { border-color:var(--ring); background:rgba(var(--ink),.08); }
+.vs-preview-pane { display:flex; flex-direction:column; gap:12px; min-width:0; min-height:0; }
+.vs-preview-heading { display:flex; gap:14px; justify-content:space-between; align-items:start; flex:none; }
+.vs-preview-heading h3 { margin:0 0 5px; font-size:17px; font-weight:600; }
+.vs-preview-heading p { margin:0; color:var(--text-3); font-size:12px; line-height:1.6; }
+.vs-carousel-image { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:12px; background:rgba(var(--ink),.025); }
+.vs-carousel-image img { display:block; width:100%; height:100%; min-height:0; object-fit:contain; }
+.vs-carousel-footer { display:flex; align-items:center; justify-content:space-between; gap:10px; flex:none; flex-wrap:wrap; }
+.vs-carousel-nav { display:flex; align-items:center; gap:12px; }
+.vs-carousel-nav .btn { min-height:44px; min-width:44px; font-size:20px; }
+.vs-carousel-nav span { font-size:12px; color:var(--text-3); font-variant-numeric:tabular-nums; min-width:64px; text-align:center; }
+.vs-carousel-footer .vs-actions { margin:0; }
+@media(max-width:760px) { .vs-browsing .vs-browser{grid-template-columns:minmax(0,1fr)} .vs-browsing .vs-library{display:none} .vs-browsing{height:calc(100dvh - 12px)} .vs-browsing .vs-body{padding:12px} .vs-preview-heading h3{font-size:15px} .vs-carousel-nav{gap:6px} }
 @media(max-width:640px) { .vs-dialog{width:calc(100vw - 12px);max-height:calc(100dvh - 12px);border-radius:14px} .vs-head,.vs-body{padding:16px} .vs-toolbar,.vs-pair{display:flex;flex-direction:column} .vs-form{grid-template-columns:1fr} .vs-grid{grid-template-columns:repeat(2,minmax(0,1fr))} .vs-thumb{height:132px} }
 `;
   document.head.append(css);
@@ -208,18 +235,62 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
     const orphan = records.filter((v) => v.unresolved).length;
     const d = dialog('Visuais das telas', `${G.project.name} · o planejamento e a implementação no mesmo lugar.`, `<div class="vs-coverage"><span><b>${screens.length}</b> telas</span><span><b>${proposals}</b> propostas</span><span><b>${captures}</b> capturas reais</span><span><b>${missing}</b> sem imagem</span></div>
       ${orphan ? `<p class="vs-error">${orphan} visuais sem tela correspondente. Os registros foram preservados em visuals.json para reassociar.</p>` : ''}
-      <div class="vs-toolbar"><input type="search" aria-label="Buscar tela" placeholder="Buscar por nome, ID ou endereço…"><select aria-label="Filtrar visuais"><option value="all">Todas as telas</option><option value="proposal">Com propostas</option><option value="capture">Com capturas reais</option><option value="empty">Sem imagem</option></select></div><p class="vs-notice" data-count aria-live="polite"></p><div class="vs-grid"></div>`);
-    const grid = d.querySelector('.vs-grid');
+      <div class="vs-toolbar"><input type="search" aria-label="Buscar tela" placeholder="Buscar por nome, ID ou endereço…"><select aria-label="Filtrar visuais"><option value="all">Todas as telas</option><option value="proposal">Com propostas</option><option value="capture">Com capturas reais</option><option value="empty">Sem imagem</option></select></div><p class="vs-notice" data-count aria-live="polite"></p><div class="vs-browser"><div class="vs-library"><div class="vs-grid"></div></div><section class="vs-preview-pane" aria-label="Preview da imagem" hidden>
+        <div class="vs-preview-heading"><div><h3 data-preview-title tabindex="-1"></h3><p data-preview-meta></p></div><button class="btn soft" data-thumbnails>Miniaturas</button></div>
+        <div class="vs-carousel-image"></div><div class="vs-carousel-footer"><div class="vs-carousel-nav"><button class="btn soft" data-prev aria-label="Imagem anterior">←</button><span data-position aria-live="polite"></span><button class="btn soft" data-next aria-label="Próxima imagem">→</button></div><div class="vs-actions"><button class="btn soft" data-expand>Ampliar</button><button class="btn soft" data-open-canvas>Abrir no canvas</button></div></div>
+      </section></div>`);
+    const grid = d.querySelector('.vs-grid'), pane = d.querySelector('.vs-preview-pane');
+    let slides = [], index = -1;
+    const currentKey = () => slides[index]?.visual?.id || slides[index]?.screen.id;
+    function preview(next, focus = false) {
+      if (!slides.length) { pane.hidden = true; d.classList.remove('vs-browsing'); index = -1; return; }
+      index = Math.max(0, Math.min(slides.length - 1, next));
+      const { screen, visual } = slides[index];
+      pane.hidden = false; d.classList.add('vs-browsing');
+      d.querySelector('[data-preview-title]').textContent = screen.name;
+      d.querySelector('[data-preview-meta]').textContent = visual ? [kindName(visual), visual.version, visual.viewport, visual.state, visual.approved ? 'Aprovada' : ''].filter(Boolean).join(' · ') : 'Esta tela ainda não tem imagens.';
+      d.querySelector('.vs-carousel-image').innerHTML = visual ? image(visual) : '<p class="vs-empty">Aguardando a primeira proposta ou captura real desta tela.</p>';
+      d.querySelector('[data-position]').textContent = `${index + 1} / ${slides.length}`;
+      d.querySelector('[data-prev]').disabled = index === 0;
+      d.querySelector('[data-next]').disabled = index === slides.length - 1;
+      d.querySelector('[data-expand]').disabled = !usable(visual);
+      grid.querySelectorAll('[data-screen]').forEach((b) => b.setAttribute('aria-current', String(b.dataset.screen === screen.id)));
+      wireImages(pane);
+      if (focus) d.querySelector('[data-preview-title]').focus({ preventScroll:true });
+    }
+    d.querySelector('[data-prev]').onclick = () => preview(index - 1);
+    d.querySelector('[data-next]').onclick = () => preview(index + 1);
+    d.querySelector('[data-thumbnails]').onclick = () => {
+      pane.hidden = true; d.classList.remove('vs-browsing');
+      const b = [...grid.querySelectorAll('[data-screen]')].find((b) => b.dataset.screen === slides[index]?.screen.id);
+      b?.focus({preventScroll:true}); b?.scrollIntoView({block:'nearest'});
+    };
+    d.querySelector('[data-expand]').onclick = () => { if (usable(slides[index]?.visual)) enlarge(slides[index].visual); };
+    d.querySelector('[data-open-canvas]').onclick = () => { const s = slides[index]?.screen; if (s) { d.close(); Screens.show(s); } };
+    d.addEventListener('keydown', (e) => {
+      if (pane.hidden || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); preview(index + (e.key === 'ArrowRight' ? 1 : -1)); }
+    });
     const render = () => {
       const words = d.querySelector('input').value.toLowerCase().split(/\s+/).filter(Boolean), filter = d.querySelector('select').value;
       const list = screens.filter((s) => words.every((w) => `${s.name} ${s.url} ${s.file}`.toLowerCase().includes(w))).filter((s) => filter === 'all' || (filter === 'empty' ? !forScreen(s).some(usable) : forScreen(s).some((v) => v.kind === filter)));
-      d.querySelector('[data-count]').textContent = `${list.length} de ${screens.length} telas · escolha uma para abrir no canvas`;
+      d.querySelector('[data-count]').textContent = `${list.length} de ${screens.length} telas · clique para visualizar aqui`;
+      const previous = currentKey(), wasOpen = !pane.hidden;
+      slides = list.flatMap((screen) => {
+        const refs = forScreen(screen).filter((v) => filter !== 'proposal' && filter !== 'capture' || v.kind === filter);
+        return refs.length ? refs.map((visual) => ({ screen, visual })) : [{ screen, visual:null }];
+      });
       grid.innerHTML = list.map((s) => {
         const refs = forScreen(s), thumb = refs.find((v) => v.approved && usable(v)) || refs.find(usable), proposals = refs.filter((v) => v.kind === 'proposal').length;
         return `<button class="vs-screen" data-screen="${h(s.id)}"><div class="vs-thumb">${thumb ? image(thumb) : 'Aguardando imagem'}</div><div class="vs-screen-copy"><strong>${h(s.name)}</strong><small>${proposals} propostas · ${refs.length - proposals} capturas reais</small><small>${h(s.url)}</small></div></button>`;
       }).join('');
       if (!list.length) grid.innerHTML = '<p class="vs-empty">Nenhuma tela corresponde a este filtro.</p>';
-      grid.querySelectorAll('[data-screen]').forEach((b) => b.onclick = () => { d.close(); Screens.show(screens.find((s) => s.id === b.dataset.screen)); }); wireImages(grid);
+      grid.querySelectorAll('[data-screen]').forEach((b) => b.onclick = () => {
+        const refs = slides.filter((x) => x.screen.id === b.dataset.screen);
+        const best = refs.find((x) => x.visual?.approved && usable(x.visual)) || refs.find((x) => usable(x.visual)) || refs[0];
+        preview(slides.indexOf(best), true);
+      }); wireImages(grid);
+      if (wasOpen) { const kept = slides.findIndex((x) => (x.visual?.id || x.screen.id) === previous); preview(kept < 0 ? 0 : kept); }
     };
     d.querySelector('input').oninput = render; d.querySelector('select').onchange = render; render(); d.querySelector('input').focus();
   }
