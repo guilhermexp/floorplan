@@ -8,6 +8,14 @@
 
 # Changelog
 
+## 0.6.1 (2026-11-01)
+
+- **Fewer false alarms in Health** (thanks to the user who reported these):
+  - **A password hash isn't the password:** bcrypt, argon2 and similar hashes are no longer reported as passwords, and neither is anything under a name like `ADMIN_PASSWORD_HASH`, including browser variables such as `VITE_ADMIN_PASSWORD_HASH`. The secret that makes a hash (`HASH_SECRET`) is still flagged, and so is a real key format under any name.
+  - **An encrypted backup isn't an exposed one:** encrypted values in a `.env` file are left alone (dotenvx, sops, Ansible Vault, AWS KMS, HashiCorp Vault, age, PGP, OpenSSL and Fernet), and so are passphrase-protected private keys. A value left unencrypted next to them is still flagged.
+- **Mark an issue "Not a problem":** a new button on each Health issue, with an optional reason. The issue moves to the bottom of the list and out of the count, and stays there when the map is rebuilt. It shows again if the same check finds something new in that file or the issue changes severity, and **Show again** undoes it. Your choices are saved in `floorplan/health-dismissed.json`. Exported copies keep the issue set apart but leave your reason out.
+- **Report a false alarm if you like:** a box in the same dialog opens a GitHub issue for you to read, edit and send yourself, with a preview of exactly what it says. It never includes your code or any values, and nothing is sent unless you send it.
+
 ## 0.6.0 (2026-10-31)
 
 - **Health catches the classic mistakes in AI-built apps.** Five new checks, each in plain words with a fix to paste:

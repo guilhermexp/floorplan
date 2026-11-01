@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileGlob, parseArgs, fmtNum, mapDir, keepOutOfGit } from './lib/common.mjs';
 import { fallbackFileName, fallbackRouteName, routeKey } from './lib/names.mjs';
-import { buildHealth } from './lib/health.mjs';
+import { buildHealth, withDismissed, dismissalFor } from './lib/health.mjs';
 import { buildPlanHealth } from './lib/blueprint.mjs';
 import { buildScreens } from './lib/screens.mjs';
 import { buildVisuals } from './lib/visuals.mjs';
@@ -420,6 +420,11 @@ if (!scan.blueprint) try { graph.health = buildHealth({ graph, scan, arch, root 
 try { graph.screens = buildScreens({ graph, scan, arch, root }); } catch (e) { warn(`screen detection failed: ${e.message}`); graph.screens = []; }
 try { graph.visuals = buildVisuals({ graph, outDir, warn }); } catch (e) { fail(`visuals.json: ${e.message}`); }
 if (scan.blueprint) try { graph.health = buildPlanHealth({ graph, scan }); } catch (e) { warn(`design review failed: ${e.message}`); graph.health = { issues: [] }; }
+// issues people marked "not a problem" on the map (saved by serve.mjs) stay listed, set apart, and leave the counts
+const dismissedFile = path.join(outDir, 'health-dismissed.json');
+if (graph.health?.issues && fs.existsSync(dismissedFile)) {
+  try { graph.health = withDismissed(graph.health, JSON.parse(fs.readFileSync(dismissedFile, 'utf8')).dismissed); } catch (e) { warn(`health-dismissed.json is not valid JSON: ${e.message}`); }
+}
 fs.mkdirSync(outDir, { recursive: true });
 const trackedWarning = keepOutOfGit(outDir);
 fs.writeFileSync(path.join(outDir, 'graph.json'), JSON.stringify(graph, null, 0));
@@ -450,7 +455,9 @@ const uiScripts = fs.existsSync(uiDir) ? fs.readdirSync(uiDir).filter((n) => n.e
 const html = page(graph);
 fs.writeFileSync(path.join(outDir, 'index.html'), html);
 // --artifact: a copy to publish to the Claude app, without this machine's absolute path (editor links)
-if (args.artifact) fs.writeFileSync(path.join(outDir, 'artifact.html'), page({ ...graph, meta: { ...graph.meta, root: null, agent: 'claude' } }));
+// (and without the reasons on dismissed health issues, which are notes to self)
+const sharedHealth = graph.health?.dismissed ? { ...graph.health, dismissed: graph.health.dismissed.map(({ reason, ...d }) => d) } : graph.health;
+if (args.artifact) fs.writeFileSync(path.join(outDir, 'artifact.html'), page({ ...graph, ...(sharedHealth ? { health: sharedHealth } : {}), meta: { ...graph.meta, root: null, agent: 'claude' } }));
 // Self-contained helpers next to the map: ask questions through the Claude Code CLI or Codex (serve.mjs)
 // and the graph lookups it hands to them (query.mjs). They need only Node, not this skill.
 fs.writeFileSync(path.join(outDir, 'query.mjs'), `${graphQuery}
@@ -467,7 +474,7 @@ function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<'
 const hs = graph.health?.summary;
 if (hs && (hs.high || hs.medium || hs.low)) {
   report.push(`${scan.blueprint ? 'DESIGN REVIEW' : 'HEALTH'}  ${hs.high} important · ${hs.medium} worth fixing · ${hs.low} minor`);
-  for (const i of graph.health.issues.filter((x) => x.severity !== 'low').slice(0, 8)) report.push(`  [${i.severity}] ${i.title}`);
+  for (const i of graph.health.issues.filter((x) => x.severity !== 'low' && !dismissalFor(x, graph.health.dismissed)).slice(0, 8)) report.push(`  [${i.severity}] ${i.title}`);
 }
 if (graph.visuals?.length) report.push(`VISUALS  ${graph.visuals.length} references`);
 if (graph.screens?.length) report.push(`SCREENS  ${graph.screens.length} detected`);

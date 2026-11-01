@@ -84,10 +84,24 @@
     '“Resolve on the map” puts a request in the Ask bar’s Change mode: finish or edit it, press Enter, and Codex updates the plan and redraws the map. Undo puts it back.':'“Resolver no mapa” prepara uma solicitação no modo Alterar: complete ou edite o texto e pressione Enter. O Codex atualiza o plano e o mapa. Use Desfazer para reverter.',
     '“Resolve on the map” puts a request in the Ask bar’s Change mode: finish or edit it, press Enter, and Claude updates the plan and redraws the map. Undo puts it back.':'“Resolver no mapa” prepara uma solicitação no modo Alterar: complete ou edite o texto e pressione Enter. O Claude atualiza o plano e o mapa. Use Desfazer para reverter.'
   });
+  Object.assign(pairs, {
+    'Not a problem':'Não é um problema','Not a problem?':'Não é um problema?',
+    'Mark as not a problem':'Marcar como não sendo um problema','Marked as not a problem':'Marcado como não sendo um problema',
+    'Show again':'Mostrar novamente','Marked as not a problem.':'Marcado como não sendo um problema.',
+    'Marked as not a problem. Thanks for the report.':'Marcado como não sendo um problema. Obrigado pelo relato.',
+    'Couldn’t reach the map server, so this wasn’t saved.':'Não foi possível acessar o servidor do mapa. A alteração não foi salva.',
+    'Couldn’t reach the map server.':'Não foi possível acessar o servidor do mapa.',
+    'Why not? (optional) e.g. that value is a bcrypt hash, not the password':'Por quê? (opcional) Ex.: o valor é um hash bcrypt, não a senha',
+    'Also tell the Floorplan developer, so the check gets better. This opens a GitHub issue you can read and edit before sending. It includes only what’s shown below, never your code or any values.':'Avise também o desenvolvedor do Floorplan para melhorar a verificação. Isso abre uma issue no GitHub para você revisar e editar antes de enviar. Ela inclui apenas o conteúdo mostrado abaixo, sem código nem valores.',
+    'Quick automatic check of the plan':'Verificação automática rápida do plano',
+    'Quick automatic check of secrets, open endpoints and leftover files':'Verificação automática rápida de segredos, endpoints abertos e arquivos sem uso',
+    'If one is wrong, “Not a problem” sets it aside.':'Se uma sugestão estiver incorreta, use “Não é um problema” para deixá-la de lado.'
+  });
   const reverse = Object.fromEntries(Object.entries(pairs).map(([en, pt]) => [pt,en]));
   let lang = 'pt-BR';
   try { if (localStorage.getItem('floorplan.language') === 'en') lang = 'en'; } catch {}
   const templates = [
+    [/^Mark “(.+)” as a false alarm and it moves to the bottom of the (design review|health check), out of the count\. It comes back if this check finds something new there\.$/,'Marque “$1” como falso alarme para removê-lo da contagem e movê-lo para o fim da lista. Ele volta a aparecer se a verificação encontrar algo novo nesse item.'],[/^Marked as not a problem: (.+)$/,'Marcado como não sendo um problema: $1'],
     [/^Part of (.+)$/,'Parte de $1'],[/^Asks the server for (.+)$/,'Solicita ao servidor: $1'],[/^Asks the server to (.+)$/,'Solicita ao servidor: $1'],[/^Server code that handles (.+)$/,'Código do servidor responsável por $1'],[/^Step (\d+) of (\d+)$/,'Etapa $1 de $2'],
     [/^Describe what to trace, and (.+) builds a step-by-step flow through the map\.$/,'Descreva o que deseja acompanhar, e $1 criará um fluxo passo a passo pelo mapa.'],
     [/^Answers come from (.+) on this computer, which can read the source$/,'As respostas vêm do $1 neste computador, com acesso de leitura ao código'],[/^Everything behind (.+)$/,'Tudo por trás de $1'],[/^Ask anything about (.+)…$/,'Pergunte sobre $1…'],[/^Screen: (.+)$/,'Tela: $1'],[/^Answer: (.+)$/,'Resposta: $1'],[/^Go to (.+)$/,'Ir para $1'],[/^Build this with (.+)$/,'Implementar com $1'],[/^Fix with (.+)$/,'Corrigir com $1'],[/^Resolve with (.+)$/,'Resolver com $1'],[/^Copied\. Paste it into (.+)\.$/,'Copiado. Cole no $1.'],[/^Downloaded (.+)$/,'Arquivo baixado: $1'],[/^Layout failed: (.+)$/,'Falha ao organizar o mapa: $1'],[/^No screen matches (.+)\.$/,'Nenhuma tela corresponde a $1.'],[/^(Design review|Health check): (.+)$/,'__HEALTH__'],[/^Theme: (.+)\. Press for (.+)\.$/,'__THEME__'],[/^Theme is now (.+)\.$/,'__THEME_STATUS__'],

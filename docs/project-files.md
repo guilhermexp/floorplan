@@ -16,6 +16,7 @@ Floorplan writes to exactly two places in your project: the `floorplan/` folder,
 | `visuals.json` | User-owned mockups and captures, with screen associations and provenance | **Yes**, or use the import UI/CLI |
 | `visuals/*` | Copied PNG/JPEG/WebP references; preserved across refresh | Add through the importer; preserve files referenced by the manifest |
 | `visuals-store.mjs` | Generated validation, local import and export helper | No |
+| `health-dismissed.json` | Health issues you marked **Not a problem**, with your reasons | Only to undo one. **Show again** on the map does it too |
 | `serve.mjs` | Serves the map locally and answers questions through the Claude Code CLI or Codex | No |
 | `query.mjs` | Looks things up in the map from the command line; Claude and Codex use it too | No |
 | `artifact.html` | A copy for opening in the Claude app, only if you asked for one | No |
