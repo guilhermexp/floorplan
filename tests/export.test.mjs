@@ -6,7 +6,24 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
-import { shopApp, run, readJson, writeJson, cleanup, FAKE_PASSWORD } from './helpers.mjs';
+import { makeProject, shopApp, run, readJson, writeJson, cleanup, FAKE_PASSWORD } from './helpers.mjs';
+
+test('artifact and technical exports omit internal lifecycle state and the private source path', () => {
+  const fixture = makeProject({});
+  try {
+    writeJson(path.join(fixture, 'floorplan/plan.json'), { $schema: 'floorplan/plan@2', stage: 'concept', objective: 'Planejar um aplicativo', source: '/private/internal-source-do-not-share.md', files: [] });
+    writeJson(path.join(fixture, 'floorplan/architecture.json'), { project: { name: 'Aplicativo' }, nodes: [{ id: 'app', kind: 'ui', label: 'Aplicativo' }] });
+    run('plan.mjs', fixture);
+    run('build.mjs', fixture, '--artifact', '--no-claude-md');
+    const destination = path.join(fixture, 'shared.html');
+    execFileSync(process.execPath, [path.join(fixture, 'floorplan/serve.mjs'), '--export', destination], { encoding: 'utf8' });
+    for (const file of [path.join(fixture, 'floorplan/artifact.html'), destination]) {
+      const html = fs.readFileSync(file, 'utf8');
+      assert.equal(dataOf(html).lifecycle, undefined);
+      assert.ok(!html.includes('/private/internal-source-do-not-share.md'));
+    }
+  } finally { cleanup(fixture); }
+});
 
 const TOKEN_IN_REMOTE = 'ghp-not-a-real-token-1234';
 let root, server, base, token;

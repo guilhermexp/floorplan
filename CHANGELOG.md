@@ -10,6 +10,16 @@
 
 # Changelog
 
+## 0.7.0 (2026-11-01)
+
+- Add guided concept-to-implementation planning with requirements, criteria, decisions and persistent screen identities.
+- Keep intent and observed code together; invalidate verification after content or criterion changes and show analysis limits.
+- Add private recoverable revisions, immutable local baselines and offline client presentations with device galleries.
+- Share validated mutations between CLI and map UI; reject stale proposals and preserve visual associations during migration.
+- Add optional Repowise context and a serial foreground watcher, with incomplete/stale results visible and no global hooks or automatic installs.
+- Preserve the complete Git exclusion of real project documents, images, histories and analyzer indexes.
+
+
 ## 0.6.1 (2026-11-01)
 
 - **Fewer false alarms in Health** (thanks to the user who reported these):

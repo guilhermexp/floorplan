@@ -61,11 +61,11 @@ test('nothing to install: no dependencies and no install scripts', () => {
 test('the only commands pre-approved are the skill’s own scripts, and that list is fixed', () => {
   const front = /^---\n([\s\S]*?)\n---/.exec(read(path.join(SKILL, 'SKILL.md')).replace(/\r\n/g, '\n'))[1];
   // each script runs without a prompt while the skill is in use, so adding one is a deliberate change
-  const SCRIPTS = ['build.mjs', 'describe.mjs', 'open.mjs', 'plan.mjs', 'recent.mjs', 'refresh.mjs', 'scan.mjs', 'status.mjs', 'visuals.mjs'];
+  const SCRIPTS = ['build.mjs', 'describe.mjs', 'open.mjs', 'plan.mjs', 'recent.mjs', 'refresh.mjs', 'scan.mjs', 'status.mjs', 'visuals.mjs', 'project.mjs', 'observe.mjs'];
   const granted = /^allowed-tools:\n((?: {2}- .*\n?)+)/m.exec(front + '\n')?.[1].trim().split('\n').map((l) => l.replace(/^\s*- /, '').trim());
   assert.deepEqual(granted, SCRIPTS.map((s) => `Bash(node \${CLAUDE_SKILL_DIR}/scripts/${s} *)`), `SKILL.md allowed-tools: exactly the skill's own scripts. ${UPDATE}`);
   const scripts = fs.readdirSync(path.join(SKILL, 'scripts')).filter((n) => !fs.statSync(path.join(SKILL, 'scripts', n)).isDirectory()).sort();
-  assert.deepEqual(scripts, SCRIPTS, `scripts/ list. ${UPDATE}`);
+  assert.deepEqual(scripts, [...SCRIPTS].sort(), `scripts/ list. ${UPDATE}`);
 });
 
 test('it reaches the internet in one place: the waitlist, only when someone signs up', () => {
@@ -79,7 +79,9 @@ test('it reaches the internet in one place: the waitlist, only when someone sign
   // every request: to the map's own server, except the one waitlist call
   const LOCAL = /^(['"`]\/|s\.url \+)/;
   const calls = find(/\bfetch\(\s*([^,)]+)/).map((x) => ({ ...x, arg: x.m[1].trim() }));
-  const outside = calls.filter((c) => !LOCAL.test(c.arg));
+  const outside = calls.filter((c) => !LOCAL.test(c.arg) && !(c.file === 'assets/ui/07-project.js' && c.arg === 'url'));
+  // This helper accepts only the three local project endpoints (also exercised by project-ui tests).
+  assert.match(read(path.join(SKILL, 'assets/ui/07-project.js')), /\['\/api\/project', '\/api\/project\/baseline', '\/api\/export'\]\.includes\(url\)/);
   assert.deepEqual(outside.map((c) => `${c.file}: fetch(${c.arg}`), ['assets/serve.mjs: fetch(WAITLIST_URL'], `requests that leave this computer. ${UPDATE}`);
   assert.match(read(path.join(SKILL, 'assets', 'serve.mjs')), /const WAITLIST_URL = process\.env\.FLOORPLAN_WAITLIST_URL \|\| 'https:\/\/floorplan-waitlist-690500262396\.us-central1\.run\.app\/';/);
   assert.deepEqual(find(/\b(WebSocket|XMLHttpRequest|sendBeacon|importScripts)\b/).map((x) => `${x.file}: ${x.text}`), [], `other ways to reach a server. ${UPDATE}`);
@@ -94,7 +96,7 @@ test('it reaches the internet in one place: the waitlist, only when someone sign
 
 test('it runs a fixed list of programs, and never through a shell', () => {
   const importers = find(/from\s+['"](?:node:)?child_process['"]/).map((x) => x.file).sort();
-  assert.deepEqual(importers, ['assets/serve.mjs', 'scripts/lib/common.mjs', 'scripts/open.mjs', 'scripts/refresh.mjs', 'scripts/visuals.mjs'], `files that start programs. ${UPDATE}`);
+  assert.deepEqual(importers, ['assets/serve.mjs', 'scripts/lib/common.mjs', 'scripts/lib/native-observation.mjs', 'scripts/lib/project-commands.mjs', 'scripts/lib/repowise.mjs', 'scripts/observe.mjs', 'scripts/open.mjs', 'scripts/refresh.mjs', 'scripts/visuals.mjs'], `files that start programs. ${UPDATE}`);
   // only spawn and execFileSync, which take a program and its arguments (regex .exec() is text matching)
   const names = find(/import\s*\{([^}]*)\}\s*from\s+['"](?:node:)?child_process['"]/).flatMap((x) => x.m[1].split(',').map((n) => n.trim()));
   assert.deepEqual([...new Set(names)].sort(), ['execFileSync', 'spawn'], `child_process functions used. ${UPDATE}`);
@@ -105,6 +107,7 @@ test('it runs a fixed list of programs, and never through a shell', () => {
   const ALLOWED = new Set([
     "process.platform === 'win32' ? 'where' : 'which'",
     'cli.cmd',
+    'file', // validated Repowise executable (or explicitly supplied local path), argv only
     'process.execPath',
     'node',
     "'git'",
@@ -126,10 +129,12 @@ test('no code is downloaded, decoded or built from text at run time', () => {
   // the one exception: serve.mjs loads the map's own lookup code from floorplan/query.mjs, a file the build wrote
   assert.deepEqual(find(/new Function\(/).map((x) => x.file), ['assets/serve.mjs'], `new Function. ${UPDATE}`);
   assert.match(read(path.join(SKILL, 'assets', 'serve.mjs')), /const coreSrc = fs\.readFileSync\(path\.join\(here, 'query\.mjs'\), 'utf8'\)/);
-  assert.deepEqual(find(/\bimport\s*\(/).map((x) => `${x.file}:${x.line}`), [], `dynamic import. ${UPDATE}`);
+  const localImports = find(/\bimport\s*\(/).map(x => x.file).sort();
+  assert.deepEqual(localImports, ['assets/query-cli.mjs', 'assets/serve.mjs', 'assets/serve.mjs', 'scripts/lib/project-commands.mjs', 'scripts/project.mjs'].sort(), `only named local skill modules may be loaded dynamically. ${UPDATE}`);
+  assert.doesNotMatch(code.map(read).join('\n'), /import\s*\(\s*['"](?:https?:|data:)/, 'no downloaded module or data URL execution');
   assert.deepEqual(find(/from\s+['"](?:node:)?(vm|worker_threads|inspector|wasi)['"]|new Worker\(|WebAssembly\./).map((x) => `${x.file}: ${x.text}`), [], `other ways to run code. ${UPDATE}`);
   // base64: Health inspects token kinds; visual imports decode raster bytes and exports encode them, never executable text.
-  assert.deepEqual(find(/\batob\(|['"]base64['"]\s*\)/).filter((x) => x.file !== 'scripts/build.mjs').map((x) => x.file), ['scripts/lib/health.mjs', 'scripts/lib/visuals.mjs', 'scripts/lib/visuals.mjs'], `base64 image handling and token inspection. ${UPDATE}`);
+  assert.deepEqual(find(/\batob\(|['"]base64['"]\s*\)/).filter((x) => x.file !== 'scripts/build.mjs').map((x) => x.file), ['scripts/lib/client-export.mjs', 'scripts/lib/health.mjs', 'scripts/lib/project.mjs', 'scripts/lib/project.mjs', 'scripts/lib/visuals.mjs', 'scripts/lib/visuals.mjs'], `base64 image handling, local recovery journal and token inspection. ${UPDATE}`);
   // no long opaque strings that could hide a payload (the build inlines the logo and fonts from files)
   assert.deepEqual(find(/[A-Za-z0-9+/=]{160,}/).map((x) => `${x.file}:${x.line}`), [], 'long encoded strings');
 });

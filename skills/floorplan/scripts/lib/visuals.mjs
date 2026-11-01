@@ -87,7 +87,7 @@ export function readVisualAsset(outDir, asset) {
 function resolveScreen(graph, ref) {
   const exact = (graph.screens || []).find((s) => s.id === ref);
   if (exact) return exact;
-  const matches = (graph.screens || []).filter((s) => s.file === ref || 'f:' + s.file === ref);
+  const matches = (graph.screens || []).filter((s) => s.aliases?.includes(ref) || s.file === ref || 'f:' + s.file === ref);
   if (matches.length > 1) throw new Error(`Screen file is ambiguous; use a screen ID: ${ref}`);
   return matches[0];
 }
@@ -117,11 +117,13 @@ export function addVisual({ outDir, graph, metadata, bytes, rebuild = () => {} }
   item.screen = screen.id;
   fs.mkdirSync(outDir, { recursive: true });
   const lock = path.join(outDir, '.visuals.lock');
+  if (fs.existsSync(path.join(outDir, '.project.lock'))) throw new Error('O planejamento está sendo atualizado. Tente novamente.');
   let fd;
   try { fd = fs.openSync(lock, 'wx'); } catch (e) { if (e.code === 'EEXIST') throw new Error('Another image is being added. Please try again shortly.'); throw e; }
   const manifest = manifestPath(outDir);
   let old, asset, wrote = false;
   try {
+    if (fs.existsSync(path.join(outDir, '.project.lock'))) throw new Error('O planejamento está sendo atualizado. Tente novamente.');
     const data = readVisualManifest(outDir);
     if (data.items.length >= MAX_ITEMS) throw new Error('The visual catalog has reached 5000 records');
     old = fs.existsSync(manifest) ? fs.readFileSync(manifest) : null;

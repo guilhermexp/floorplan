@@ -37,6 +37,28 @@ test('it listens on 127.0.0.1 only', () => {
   assert.match(base, /^http:\/\/127\.0\.0\.1:\d+$/);
 });
 
+test('private project context and local baseline use authenticated endpoints', async () => {
+  assert.equal((await api('/api/project')).status, 403);
+  const headers = { 'x-floorplan-token': token };
+  const stateResponse = await api('/api/project', { headers });
+  assert.equal(stateResponse.status, 200);
+  const state = await stateResponse.json();
+  assert.match(state.revision, /^[a-f0-9]{64}$/);
+  const stale = await api('/api/project/baseline', { headers, method: 'POST', body: JSON.stringify({ id: 'review', title: 'Revisão local', expectedRevision: 'outdated' }) });
+  assert.equal(stale.status, 409);
+  const saved = await api('/api/project/baseline', { headers, method: 'POST', body: JSON.stringify({ id: 'review', title: 'Revisão local', expectedRevision: state.revision }) });
+  assert.equal(saved.status, 201);
+  const latest = await (await api('/api/project', { headers })).json();
+  assert.equal(latest.baselines[0].id, 'review');
+  assert.equal(latest.baselines[0].acceptance, undefined);
+  const exported = await api('/api/export', { headers, method: 'POST', body: JSON.stringify({ profile: 'client', baseline: 'review' }) });
+  assert.equal(exported.status, 200);
+  const html = await exported.text();
+  assert.ok(html.includes('Revisão local'));
+  assert.equal(html.includes(root), false, 'local paths are not shipped to the client');
+  assert.equal(html.includes('shop-api/config.js'), false, 'technical files are not in the presentation payload');
+});
+
 test('the page it serves carries a fresh token', () => {
   assert.match(token || '', /^[0-9a-f]{32}$/);
 });

@@ -11,6 +11,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { compileGlob, parseArgs, mapDir } from './lib/common.mjs';
+import { readProject } from './lib/project.mjs';
+import { applyDocuments } from './lib/project-commands.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const args = parseArgs(process.argv.slice(2));
@@ -24,6 +26,10 @@ if (!fs.existsSync(graphFile) || !fs.existsSync(archFile)) {
 }
 const old = JSON.parse(fs.readFileSync(graphFile, 'utf8'));
 const arch = JSON.parse(fs.readFileSync(archFile, 'utf8'));
+const projectState = readProject(outDir);
+const authoredChanges = {};
+const plannedPaths = new Set((projectState.plan?.files || []).map(f => f.path));
+const plannedRoutes = new Set((projectState.plan?.endpoints || []).map(r => `${r.method} ${r.path}`));
 
 // A blueprint is redrawn from plan.json, not from code. --from-code maps the real code instead
 // (plan.json is kept, so the blueprint can be drawn again with plan.mjs + build.mjs).
@@ -44,7 +50,7 @@ const scan = JSON.parse(fs.readFileSync(path.join(outDir, '.cache', 'scan.json')
 const include = Array.isArray(arch.include) ? arch.include : ['code'];
 const ignore = (arch.ignore || []).map(compileGlob);
 const now = new Map(scan.files.filter((f) => include.includes(f.category) && !ignore.some((g) => g.test(f.path))).map((f) => [f.path, f]));
-const before = new Map(old.files.map((f) => [f.p, f]));
+const before = new Map(old.files.filter(f => f.implementation !== 'planned').map((f) => [f.p, f]));
 
 // ---------- 2. diff files ----------
 const added = [...now.keys()].filter((p) => !before.has(p));
@@ -116,20 +122,19 @@ if (fs.existsSync(descDir)) {
         const np = renames.get(p);
         filesOut[np] = now.get(np).sig !== before.get(p).sig ? { ...v, review: `moved from ${p}; ${changeNote(np, p)}` } : v;
         carried++; changed = true;
-      } else if (deleted.includes(p)) { pruned++; changed = true; }
+      } else if (deleted.includes(p) && !plannedPaths.has(p)) { pruned++; changed = true; }
       else if (digestSet.has(p) && v.description) { filesOut[p] = { ...v, review: changeNote(p) }; flagged++; changed = true; }
       else filesOut[p] = v;
     }
     const routesOut = {};
     for (const [k, v] of Object.entries(d.routes || {})) {
       if (routeMoves.has(k)) { routesOut[routeMoves.get(k)] = { ...v, review: `path changed from ${k}` }; routeCarried++; changed = true; }
-      else if (!newRouteKeys.has(k) && oldRouteKeys.has(k)) { routePruned++; changed = true; }
+      else if (!newRouteKeys.has(k) && oldRouteKeys.has(k) && !plannedRoutes.has(k)) { routePruned++; changed = true; }
       else routesOut[k] = v;
     }
     if (changed) {
       const outObj = { files: filesOut, ...(Object.keys(routesOut).length ? { routes: routesOut } : {}) };
-      if (!Object.keys(filesOut).length && !Object.keys(routesOut).length) fs.unlinkSync(fp);
-      else fs.writeFileSync(fp, JSON.stringify(outObj, null, 2) + '\n');
+      authoredChanges['descriptions/' + name] = !Object.keys(filesOut).length && !Object.keys(routesOut).length ? null : outObj;
     }
   }
 }
@@ -144,8 +149,10 @@ fs.writeFileSync(path.join(outDir, '.cache', 'changes.json'), JSON.stringify({
 // ---------- 5. rebuild (no tokens) ----------
 let buildOut = '';
 let buildOk = true;
-try { buildOut = execFileSync(node, [path.join(HERE, 'build.mjs'), root], { encoding: 'utf8' }); }
-catch (e) { buildOut = (e.stdout || '') + (e.stderr || ''); buildOk = false; }
+try {
+  await applyDocuments(root, { expectedRevision: projectState.revision, documents: { 'architecture.json': arch, ...authoredChanges } });
+  buildOut = '✓ Projeto atualizado; plano e observações preservados.';
+} catch (e) { buildOut = e.message; buildOk = false; process.exitCode = 1; }
 
 // ---------- 6. report ----------
 const since = new Date(old.meta.generatedAt);

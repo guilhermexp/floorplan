@@ -10,6 +10,7 @@
 import path from 'node:path';
 import { classify, toPosix } from './common.mjs';
 import { matchCalls } from './routes.mjs';
+import { validatePlan } from './project.mjs';
 
 // who may use an endpoint. "team" is the people who run the service (its own admin pages), not the app's users.
 export const ACCESS = ['public', 'signed-in', 'team', 'webhook', 'internal'];
@@ -29,9 +30,10 @@ export function planToScan(plan, root) {
   const errors = [], warnings = [];
   const err = (m) => errors.push(m), warn = (m) => warnings.push(m);
   if (!plan || typeof plan !== 'object') return { scan: null, errors: ['plan.json must be an object'], warnings };
+  errors.push(...validatePlan(plan));
   const files = Array.isArray(plan.files) ? plan.files : [];
   const endpoints = Array.isArray(plan.endpoints) ? plan.endpoints : [];
-  if (!files.length) err('files must be a non-empty array of the files the system would have');
+  if (!files.length && plan.$schema !== 'floorplan/plan@2') err('files must be a non-empty array of the files the system would have');
 
   const byPath = new Map();
   files.forEach((f, i) => {

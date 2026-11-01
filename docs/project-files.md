@@ -54,6 +54,10 @@ In Codex this file isn't touched. Codex has no personal, uncommitted notes file 
 
 ## Staying out of git
 
+The fork's [continuous planning workflow](lifecycle.md) keeps this policy. New `revisions/` snapshots and immutable `baselines/` (including frozen visual assets) live inside the same ignored folder, outside `.cache/`. They survive cache cleanup and server shutdown. Nothing copies these project records to the plugin repository or publishes them automatically. Back up the private folder separately when transferring to another machine.
+
+An explicitly enabled Repowise analyzer also keeps `.repowise/` private with its own ignore file. Previously tracked data cannot be hidden by a new ignore rule; the adapter reports that condition instead of silently changing Git tracking.
+
 - **`floorplan/`** contains its own `.gitignore` that ignores everything in the folder, including itself. Your `.gitignore` isn't changed, and the folder never appears in `git status`.
 - **`CLAUDE.local.md`** is listed in `.git/info/exclude`, the per-clone ignore list that is never committed. If your project already ignores it, nothing is added.
 

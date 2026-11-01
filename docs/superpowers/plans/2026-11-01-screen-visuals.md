@@ -9,7 +9,7 @@
 
 ## Global Constraints
 
-No new dependencies. Never overwrite source images. No fabricated screenshots of an implemented Uberdog. Preserve the 86 IDs and existing approved images. Store source separately from generated graph/index; fail explicitly on invalid image paths.
+No new dependencies. Never overwrite source images. No fabricated screenshots of an implemented local test project. Preserve the screen IDs and existing approved images. Store source separately from generated graph/index; fail explicitly on invalid image paths.
 
 ### Task 1 — Data, ingestion and export
 Files: scripts/lib/visuals.mjs, scripts/visuals.mjs, scripts/build.mjs, assets/serve.mjs, tests/visuals.test.mjs, docs/visuals.md.
@@ -28,10 +28,10 @@ Files: assets/viewer.html, assets/ui/30-screens.js, new assets/ui/35-visuals.js,
 - [x] Manual upload form posts to server; report errors and restore focus on close. Static exports are browse-only.
 - [x] Browser verification of actual images, navigation, comparison and empty states; no invented capture data in the real project.
 
-### Task 3 — Uberdog end-to-end
-Files: outputs/uberdog/docs, floorplan/plan.json, architecture.json, visuals.json, visuals/*.png.
+### Task 3 — local test project end-to-end
+Files: <private-project>/floorplan/sources, floorplan/plan.json, architecture.json, visuals.json, visuals/*.png.
 - [x] Copy scope and four approved source images; construct 86 planned screen entries grouped by C/T/P/S/E/A and guide flows from the scope.
 - [x] Build blueprint with this fork, import four proposals, regenerate and open served map.
 - [x] Confirm 86 screens, 4 proposals, 0 real captures, 82 screens waiting for images; verify rebuild preservation.
 - [x] Exercise capture plus comparison on a separate clearly labeled test app, using an actual browser screenshot, not the mockup renamed.
-- [x] Run relevant tests then full suite, update docs and package the local fork and usable Uberdog output.
+- [x] Run relevant tests then full suite, update docs and package the local fork and usable local test project output.

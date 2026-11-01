@@ -12,6 +12,8 @@ allowed-tools:
   - Bash(node ${CLAUDE_SKILL_DIR}/scripts/scan.mjs *)
   - Bash(node ${CLAUDE_SKILL_DIR}/scripts/status.mjs *)
   - Bash(node ${CLAUDE_SKILL_DIR}/scripts/visuals.mjs *)
+  - Bash(node ${CLAUDE_SKILL_DIR}/scripts/project.mjs *)
+  - Bash(node ${CLAUDE_SKILL_DIR}/scripts/observe.mjs *)
 ---
 
 # Floorplan
@@ -22,6 +24,10 @@ You produce `floorplan/` at the codebase root: a floorplan of the app that someo
 - **Generated:** `graph.json` and `index.html`.
 
 The scripts do the mechanical work: finding repos, parsing imports and routes, matching HTTP calls to endpoints, layout and rendering. Your job is the part only a reader of the code can do: deciding what things *are* and saying so plainly.
+
+**Idioma e privacidade.** Escreva nomes, descrições, critérios, decisões e relatórios em português, salvo preferência diferente do usuário. O repositório do plugin contém somente a ferramenta: os dados reais de cada projeto ficam na sua própria pasta `floorplan/`, integralmente ignorada pelo Git. Isso inclui fontes recebidas, planos, imagens, capturas, análises e versões locais de escopo. Não copie dados de clientes para exemplos, testes ou commits do plugin. Histórico local não depende de Git; não remova o ignore para guardar versões.
+
+**Planejamento contínuo.** Use [references/planning.md](references/planning.md) para levantar escopo, desenhar arquitetura, planejar modificações e preparar entregas ao cliente. A intenção, a implementação observada e a evidência de verificação são estados diferentes do mesmo projeto. `plan@2` registra requisitos e critérios com IDs estáveis; o botão **Planejamento** permite consultar esses vínculos e versões locais. O agente continua responsável por fundamentar decisões: um scanner não aprova requisitos nem um mockup comprova o funcionamento.
 
 Existing map: !`node ${CLAUDE_SKILL_DIR}/scripts/status.mjs || true`
 Arguments: $ARGUMENTS
@@ -34,17 +40,17 @@ When the user supplies mockups or screenshots, attach them to the corresponding 
 
 ## Nothing built yet? Draw a blueprint
 
-If the user wants to plan something they haven't built ("here's my PRD", "I want to build an app that…", a long description of a system), make a **blueprint**: the same map, planned from their document instead of scanned from code. Use this path when there's no code for the system yet, even if the folder holds other things. If the code exists, make a normal map.
+If the user wants to plan something they haven't built ("here's my PRD", "I want to build an app that…", a long description of a system), make a **blueprint**. Start with product intent and refine the architecture as decisions become clear. Existing code can coexist with a plan: observe it, then propose the change against the current project revision. Do not discard an existing plan to switch to a code map.
 
-1. **Read the input.** A PRD file, a pasted message, or a document they point you at. Ask 2–3 questions only if something fundamental is open (who uses it, web or mobile, does anyone sign in, does money change hands); otherwise decide and record it as an assumption.
-2. **Read [references/blueprint.md](references/blueprint.md)**, then [references/schema.md](references/schema.md) for architecture.json.
-3. **Write `floorplan/plan.json`**: every planned file and endpoint, what each screen calls, which outside services and data each part uses, who may use each endpoint, your assumptions and the open questions. If the PRD is only in the chat, save it as `docs/prd.md` and use that as `source`, so the map and later questions can refer back to it.
-4. **Write `floorplan/architecture.json`** as for a code map (parts, external nodes for the services and data plan.json names, 1–3 flows for the PRD's main user stories, a tour), with globs covering the planned paths. Plain language for everyone, as in step 4 below.
+1. **Read the input and existing context.** Identify the objective, users, included/excluded scope, constraints and unresolved decisions. Ask only questions whose answers materially change the work; do not repeat approvals already given. Record reversible technical choices as assumptions or decisions, not as client requirements.
+2. **Read [references/planning.md](references/planning.md)** and [references/blueprint.md](references/blueprint.md), then [references/schema.md](references/schema.md) for architecture.json.
+3. **Prepare `floorplan/plan.json` using `floorplan/plan@2`.** Start at `concept` or `scope` with requirements and acceptance criteria. `files` and `endpoints` can be empty: do not invent paths just to draw the first blueprint. Add technical detail when moving to `architecture` or `implementation`. For chat-only input, preserve the source under the ignored `floorplan/sources/`, not the plugin repository. Keep existing source documents where they are.
+4. **Prepare `floorplan/architecture.json`** with responsibilities and relationships, explicit external services, principal journeys and a tour. Add globs when planned paths exist. Apply document changes using `project.mjs` with the revision returned by its status operation, rather than introducing another writer. Plain language for everyone, as in step 4 below.
 5. **Run `node ${CLAUDE_SKILL_DIR}/scripts/plan.mjs <root>`, then build.mjs** (step 5 below). Fix what they report until both are clean. Skip describe.mjs and recent.mjs: names and descriptions come from plan.json. A blueprint adds no notes to CLAUDE.local.md, since there's no code to look up yet.
 6. **Show it** with open.mjs (step 8).
 7. **Report** (instead of step 8's report): the URL; the shape of the system in 3–5 lines; the stack you chose; your main assumptions; and the design review's questions and warnings. Tell them each part has **Build this with Claude** (or Codex) for a ready request to build just that part; that they can switch the map's Ask bar to **Change** and ask for additions or changes ("also plan out refunds"), and the map redraws with what changed highlighted (the design review's **Resolve on the map** fills in such a request, so open questions just need their answer); that plan.json and architecture.json are theirs to edit or to ask you to change; and that the map stays out of git.
 
-To change a blueprint, edit plan.json and architecture.json and run `refresh.mjs`, which redraws it from plan.json. Once the code exists and the user wants a map of it, run `refresh.mjs <root> --from-code`, then carry on as for a refresh. plan.json stays where it is.
+To change a blueprint, read its current revision, prepare the updated author documents and apply them through `project.mjs`, then refresh. Once code exists, use `refresh.mjs <root> --from-code` to observe it while preserving the plan. Review the differences: a file found is observed implementation, not proof that a requirement passes. A failed or partial observation must remain visible.
 
 ## A map already exists? Refresh it instead
 
@@ -63,6 +69,8 @@ Do only what NEXT asks:
 - add globs for new directories that landed in "unassigned";
 - run describe.mjs (step 6), which now only produces worksheets for the new and flagged items;
 - check module summaries and flows if the change was large.
+
+If a plan exists, also read the lifecycle assessment: check requirements and evidence affected by changed code. Body-only changes may leave descriptions valid while invalidating behavioral verification. Use the full observed revision to date evidence; do not infer completion from an unchanged signature, a successful build, or a screenshot alone. If Repowise is explicitly enabled for this project, `observe.mjs` can collect additional code context; consult `docs/repowise.md` for supported options. Do not install agent hooks or enable model calls on every save implicitly. A truncated/degraded result cannot prove an omitted item is absent.
 
 A typical refresh after a few hours of work is a handful of worksheet entries. Then mark recent work (step 7), and show it and report (step 8). Always show it, even when nothing changed: the user asked to see their floorplan.
 
@@ -149,6 +157,8 @@ The map has a floating Ask bar. The user types a question, and the agent answers
 - **Neither:** `floorplan/index.html` still opens directly in a browser. The Ask bar explains what's needed.
 
 ### Sharing a copy
+
+For a client blueprint, prefer **Planejamento → Criar versão local → Exportar para cliente**. A version preserves the selected scope and visuals outside Git; creating it does not mean the client accepted it. Export the requested immutable version, and identify it in the handoff. Keep the technical export below for people who need implementation details. Sending/uploading the export is a separate user-authorized action.
 
 When the user wants to send the map to someone (a teammate, a client, someone without Claude or Codex), export it. An export is the same single HTML file without the Ask bar, prompts for Claude or Codex, editor links, this machine's folder path or git remotes. The map's **Export** button does this from the browser; from here, run:
 

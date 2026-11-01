@@ -146,8 +146,18 @@
   // other features (the tour) can open a screen's board
   window.FloorplanScreens = { list: screens, show: showScreen, openMenu };
   function restoreScreen() {
-    const id = new URLSearchParams(location.hash.slice(1)).get('screen');
-    if (id) showScreen(screens.find((s) => s.id === id), { push: false });
+    const params = new URLSearchParams(location.hash.slice(1));
+    const id = params.get('screen');
+    if (!id) return;
+    const exact = screens.find((s) => s.id === id);
+    const aliases = exact ? [] : screens.filter((s) => s.aliases?.includes(id));
+    const screen = exact || (aliases.length === 1 ? aliases[0] : null);
+    if (!screen) return;
+    showScreen(screen, { push: false });
+    if (screen.id !== id) {
+      params.set('screen', screen.id);
+      history.replaceState(null, '', '#' + params.toString());
+    }
   }
   SC.on('ready', restoreScreen);
   window.addEventListener('popstate', restoreScreen);

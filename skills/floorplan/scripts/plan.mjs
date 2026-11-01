@@ -39,6 +39,7 @@ if (errors.length) { console.log(out.join('\n')); console.log('\nFix the errors 
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, JSON.stringify(scan));
+fs.writeFileSync(path.join(outDir, '.cache', 'planned.json'), JSON.stringify(scan));
 keepOutOfGit(outDir);
 
 const bp = scan.blueprint;

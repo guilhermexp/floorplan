@@ -16,3 +16,8 @@
 New here? Start with [Getting started](getting-started.md).
 
 Floorplan is mainly for mapping code you already have, and every guide is written for that. It can also draw a **blueprint**, a map planned from a PRD or spec before the code exists: see [Plan something you haven't built yet](getting-started.md#plan-something-you-havent-built-yet), [Blueprints on the map](using-the-map.md#blueprints) and [how blueprints work](how-it-works.md#blueprints).
+
+## Planejamento contínuo no fork
+
+- [Escopo, arquitetura, versões privadas e apresentações](lifecycle.md)
+- [Integração opcional Repowise](repowise.md)

@@ -2054,7 +2054,7 @@ function cancelAsk() {
 // as recent work. What changed is kept across that reload in sessionStorage, with an Undo.
 const CHANGE_KEY = 'floorplan-change';
 // a server whose engine can't be held to the plan's format says change: false
-const canChange = () => PLAN && askState.engine === 'cli' && window.FLOORPLAN_SERVER?.change !== false;
+const canChange = () => (PLAN || !!G.lifecycle?.plan) && askState.engine === 'cli' && window.FLOORPLAN_SERVER?.change !== false;
 function setAskMode(m) {
   askState.mode = canChange() && m === 'change' ? 'change' : 'ask';
   $('#ask-mode')?.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.m === askState.mode); b.setAttribute('aria-pressed', String(b.dataset.m === askState.mode)); });
@@ -2406,7 +2406,7 @@ const init = readHash();
 state.container = init.v; state.selected = init.s;
 if (init.s && isPhone()) { document.body.classList.remove('no-panel'); $('#btn-panel').setAttribute('aria-expanded', 'true'); } // a shared link to a box opens its details
 const fontsReady = document.fonts?.ready ? Promise.race([document.fonts.ready, new Promise((ok) => setTimeout(ok, 1500))]) : Promise.resolve();
-fontsReady.then(() => render({ after: () => { renderPanel(); emit('ready', {}); if (PLAN && window.FLOORPLAN_SERVER) showChangeResult(); } }));
+fontsReady.then(() => render({ after: () => { renderPanel(); emit('ready', {}); if ((PLAN || G.lifecycle?.plan) && window.FLOORPLAN_SERVER) showChangeResult(); } }));
 })();
 </script>
 <!--__UI_EXTENSIONS__-->

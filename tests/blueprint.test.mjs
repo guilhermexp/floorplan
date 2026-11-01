@@ -153,7 +153,7 @@ test('build.mjs catches a service that is not a node', () => {
   } finally { cleanup(r); }
 });
 
-test('refresh redraws a blueprint from plan.json, and --from-code maps the real code instead', () => {
+test('refresh redraws the plan and --from-code retains planned scope alongside observed code', () => {
   const r = withPlan(() => {});
   try {
     run('plan.mjs', r);
@@ -167,12 +167,14 @@ test('refresh redraws a blueprint from plan.json, and --from-code maps the real 
 
     fs.mkdirSync(path.join(r, 'api', 'src'), { recursive: true });
     fs.writeFileSync(path.join(r, 'api', 'src', 'server.ts'), `import express from 'express';\nconst app = express();\napp.get('/api/health', (req, res) => res.send('ok'));\napp.listen(3000);\n`);
-    // the blueprint's flows point at files that aren't written yet, so the map of the code gets its own
-    writeJson(path.join(r, 'floorplan', 'architecture.json'), { project: { name: 'Pawprint', summary: 'Being built.' }, nodes: [{ id: 'api', label: 'Main server', kind: 'service', summary: 'The server.', paths: ['api/**'] }] });
+    // Planned architecture and flows remain meaningful while implementation is partial.
     run('refresh.mjs', r, '--from-code', '--no-claude-md');
     const g = readGraph(r);
     assert.equal(g.meta.blueprint, undefined);
-    assert.deepEqual(routeKeys(g), ['GET /api/health']);
+    assert.ok(routeKeys(g).includes('GET /api/health'));
+    assert.ok(routeKeys(g).includes('POST /api/bookings'), 'planned endpoints remain visible');
+    assert.ok(g.files.some(f => f.implementation === 'planned'));
+    assert.equal(g.lifecycle.plan.source, 'docs/prd.md');
     assert.ok(fs.existsSync(path.join(r, 'floorplan', 'plan.json')), 'the plan is kept');
   } finally { cleanup(r); }
 });
