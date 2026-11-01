@@ -922,6 +922,14 @@ function buildView(container) {
 // sizes live in the hover tooltip and the details panel.
 // [width, min height]
 const SIZES = { visual: [300, 500], node: [300, 128], dir: [272, 110], file: [284, 110], module: [284, 110], route: [300, 128], symbol: [260, 100] };
+function cardSize(item) {
+  const i = info(item);
+  if (i.type !== 'visual') return SIZES[i.type] || SIZES.file;
+  const match = /(\d+)\s*[x×]\s*(\d+)/i.exec(i.visual.viewport || '');
+  const ratio = match && +match[1] > 0 && +match[2] > 0 ? +match[1] / +match[2] : /desktop|landscape/i.test(i.visual.viewport || '') ? 1.5 : 390 / 844;
+  const width = ratio > 1 ? 520 : 300;
+  return [width, Math.round((width - 4) / Math.max(.25, Math.min(3, ratio))) + 4 + 56];
+}
 const NOTE_H = 64;
 const FOOT_H = 30;   // the footer row: size on the left, recent-work pill on the right
 const TITLE2_H = 10; // a title that wraps onto a second line
@@ -941,7 +949,8 @@ function cardFoot(item) {
 /** Extra height a card needs beyond its base size: a footer, and a title long enough to wrap. */
 function cardExtraH(item) {
   const i = info(item);
-  const [w] = SIZES[i.type] || SIZES.file;
+  if (i.type === 'visual') return 0;
+  const [w] = cardSize(item);
   const name = i.type === 'route' ? i.r.name : i.type === 'symbol' ? i.s[0] : i.name;
   const room = w - 36 - (i.type === 'route' ? 0 : 40); // padding, and the icon beside the title
   return (cardFoot(item) ? FOOT_H : 0) + (textW(name, 15, 600) > room ? TITLE2_H : 0);
@@ -950,7 +959,8 @@ function cardHTML(item) {
   const i = info(item);
   if (i.type === 'visual') {
     const v = i.visual, src = visualSrc(v);
-    return `<div class="card visual-card" style="--c:${colorOf(i)}"><div class="head"><span class="visual-badge ${h(v.kind)}">${visualKind(v)}</span>${v.approved ? '<span class="visual-approved">Aprovada</span>' : ''}</div><div class="title">${h(v.title)}</div><div class="visual-image">${src ? `<img src="${h(src)}" alt="${h(v.title)}" loading="lazy" decoding="async" draggable="false">` : '<span>Imagem indisponível</span>'}</div><div class="desc">${h([v.version, v.viewport, v.state].filter(Boolean).join(' · '))}</div><div class="meta">Dois cliques para ampliar</div></div>`;
+    const [width, height] = cardSize(item), desktop = width > 300;
+    return `<div class="card visual-card${desktop ? ' visual-desktop' : ''}" style="--c:${colorOf(i)};--visual-height:${height}px"><div class="visual-image">${src ? `<img src="${h(src)}" alt="${h(v.title)}" loading="lazy" decoding="async" draggable="false">` : '<span>Imagem indisponível</span>'}</div><div class="visual-caption"><div class="visual-caption-top"><div class="visual-title">${h(v.title)}</div><span class="visual-badge ${h(v.kind)}">${visualKind(v)}</span></div><div class="visual-caption-meta">${h([v.version, v.viewport, v.approved ? 'Aprovada' : v.state].filter(Boolean).join(' · '))}</div></div></div>`;
   }
   let head = '', title = '', desc = '', cls = i.type;
   const dsc = (t, lines = 2) => t ? `<div class="desc" style="--lines:${lines}">${h(t)}</div>` : `<div class="desc empty">No description yet</div>`;
@@ -1024,7 +1034,7 @@ async function layout(view) {
   for (const e of view.edges) { bump(e.a); bump(e.b); }
   const children = [];
   for (const item of view.visible) {
-    const [w, hh] = SIZES[info(item).type] || SIZES.file;
+    const [w, hh] = cardSize(item);
     const ext = item.startsWith('n:') && nodes.get(item.slice(2)).kind === 'external';
     children.push({ id: item, width: w, height: Math.max(hh + cardExtraH(item) + (answerNote(item) ? NOTE_H : 0), (deg.get(item) || 0) * 7 + 28), ...(ext ? { layoutOptions: { 'elk.layered.layering.layerConstraint': 'LAST' } } : {}) });
   }

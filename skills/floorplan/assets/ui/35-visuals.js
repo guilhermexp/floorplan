@@ -14,11 +14,19 @@
   const source = (v) => v.kind === 'capture' && /^https?:\/\//i.test(v.sourceUrl || '') ? `<a href="${h(v.sourceUrl)}" target="_blank" rel="noopener noreferrer">${h(v.sourceUrl)}</a>` : '';
   const css = document.createElement('style');
   css.textContent = `
-.visual-card { display:flex; flex-direction:column; gap:10px; }
-.visual-card .title { white-space:normal; font-size:15px; line-height:1.3; }
-.visual-card .head { min-height:22px; justify-content:space-between; }
-.visual-image { height:300px; min-height:300px; background:#f0f0ee; border-radius:10px; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#555; }
-.visual-image img { width:100%; height:100%; object-fit:contain; pointer-events:none; }
+.card.visual-card { padding:0; gap:0; background:transparent; box-shadow:none; border-radius:0; overflow:visible; }
+.node:hover .card.visual-card, .node.sel .card.visual-card { background:transparent; box-shadow:none; }
+.visual-card .visual-image { height:calc(var(--visual-height) - 56px); flex:none; width:100%; background:#fff; border:2px solid #343434; border-radius:28px; box-shadow:0 5px 18px #0002; overflow:hidden; display:flex; align-items:center; justify-content:center; color:#555; }
+.visual-card.visual-desktop .visual-image { border-radius:12px; }
+.visual-card .visual-image img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+.node.sel .visual-card .visual-image { outline:1px solid var(--ring); outline-offset:3px; }
+svg.dim .node:not(.hl) .card.visual-card > * { opacity:1; }
+html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
+.visual-caption { height:56px; padding:10px 2px 0; }
+.visual-caption-top { display:flex; gap:8px; align-items:center; }
+.visual-title { font-size:12px; font-weight:500; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+.visual-caption-meta { font-size:10px; color:var(--text-3); margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.visual-caption .visual-badge { font-size:9px; padding:2px 6px; flex:none; }
 .visual-badge { display:inline-flex; width:max-content; align-items:center; padding:4px 9px; border-radius:20px; font-size:11px; font-weight:600; background:rgba(167,139,250,.16); color:#bfa8fc; }
 .visual-badge.capture { background:rgba(52,211,153,.14); color:#3ac996; }
 :root[data-theme="light"] .visual-badge { color:#6547a2; }
