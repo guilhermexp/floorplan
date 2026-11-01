@@ -93,6 +93,7 @@
     const requirements = plan.requirements || [], decisions = plan.decisions || [], baselines = lifecycle.baselines || [];
     const states = new Map((assessment.requirements || []).map(r => [r.id, r]));
     const observation = lifecycle.observation;
+    const pendingQuestions = (lifecycle.questions || plan.questions || []).filter(q => q.state !== 'resolved');
     return `<div class="project-overview" data-project-root data-no-translate>
       ${warning ? `<p class="project-alert" role="alert">${h(warning)}</p>` : ''}
       <section><div class="project-status">${badge(plan.stage || 'architecture')}<span>${text('Revisão', 'Revision')} ${h((lifecycle.revision || '').slice(0,12))}</span></div>
@@ -113,7 +114,7 @@
         ${decisions.length ? decisions.map(d => `<article class="project-card"><h4>${h(d.title)} ${d.status ? badge(d.status) : ''}</h4><p><b>${h(d.choice)}</b></p><p>${h(d.rationale)}</p>
           ${d.alternatives?.length ? `<p class="project-muted">${text('Alternativas consideradas', 'Alternatives considered')}</p>${list(d.alternatives)}` : ''}
           ${d.revisitWhen ? `<p class="project-muted">${text('Rever quando', 'Revisit when')}: ${h(d.revisitWhen)}</p>` : ''}</article>`).join('') : `<p class="project-muted">${text('Nenhuma decisão registrada.', 'No decisions recorded.')}</p>`}</section>
-      ${(plan.questions || []).length ? `<section><h3>${text('Questões em aberto', 'Open questions')}</h3>${list(plan.questions.map(q => typeof q === 'string' ? q : q.question))}</section>` : ''}
+      ${(plan.questions || []).length ? `<section><h3>${text('Questões em aberto', 'Open questions')}</h3>${pendingQuestions.length ? list(pendingQuestions.map(q => typeof q === 'string' ? q : q.question)) : `<p>${text('Todas as respostas foram incorporadas ao plano.', 'All answers have been incorporated into the plan.')}</p>`}<button class="btn soft" data-project-questions>${text('Responder perguntas', 'Answer questions')}</button></section>` : ''}
       ${observation ? `<section><h3>${text('Análise do código', 'Code analysis')}</h3><p>${h(observation.provider || 'Repowise')} · ${badge(observation.freshness || 'unknown')}</p>
         <p class="project-muted">${text('Última observação', 'Last observation')}: ${h(date(observation.capturedAt))}</p>
         ${observation.coverage?.truncated ? `<p class="project-alert">${text('A resposta foi limitada. Itens omitidos não são tratados como ausentes.', 'The response was truncated. Omitted items are not treated as absent.')}</p>` : ''}
@@ -180,6 +181,8 @@
       const ref = lifecycle.plan.requirements[Number(button.dataset.projectNav)]?.refs?.find(r => SC.exists(r));
       if (ref) { modal.close(); SC.reveal(ref); }
     });
+    const questionsButton = modal.el.querySelector('[data-project-questions]');
+    if (questionsButton) questionsButton.onclick = () => { modal.close(); SC.openQuestions?.(); };
     modal.el.querySelectorAll('[data-project-export]').forEach(button => button.onclick = () => exportBaseline(Number(button.dataset.projectExport), modal));
   }
 

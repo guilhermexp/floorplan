@@ -133,7 +133,7 @@ Confira o objetivo derivado da descrição existente e acrescente requisitos, cr
 | `source` | what it was planned from: the PRD's path in the project, or a few words such as "a description in chat" |
 | `stack` | the technology choices, in plain words |
 | `assumptions` | choices you made where the PRD didn't say. Shown on the map's overview |
-| `questions` | `{ question, about }`: decisions the PRD leaves open. `about` lists node ids, file paths or `"METHOD /path"`. Each one shows in the design review until it's answered and removed |
+| `questions` | `{ question, about }`: decisions the PRD leaves open. `about` lists node ids, file paths or `"METHOD /path"`. Structured questions also support stable `id`, `options`, `multiple`, user `answer` and agent `resolution`: see [questions](../../../docs/questions.md). Preserve answered questions. Review remains pending until their exact answer is incorporated into the plan |
 | `files` | every planned file (see below) |
 | `endpoints` | every planned endpoint (see below) |
 

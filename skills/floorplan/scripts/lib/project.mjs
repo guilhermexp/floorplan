@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { validateQuestions } from './questions.mjs';
 import { keepOutOfGit } from './common.mjs';
 import { readVisualManifest, readVisualAsset } from './visuals.mjs';
 
@@ -116,14 +117,7 @@ export function validatePlan(plan) {
     if (d.alternatives !== undefined) strings(d.alternatives, `${at}.alternatives`);
     if (d.status !== undefined && !['draft', 'proposed', 'review', 'accepted', 'superseded'].includes(d.status)) errors.push(`${at}.status is unsupported`);
   });
-  array(plan.questions, 'questions').forEach((q, i) => {
-    if (text(q)) return;
-    const at = `questions[${i}]`;
-    if (keys(q, ['question', 'about'], at)) {
-      if (!text(q.question)) errors.push(`${at}.question is required`);
-      if (q.about !== undefined) strings(q.about, `${at}.about`);
-    }
-  });
+  errors.push(...validateQuestions(plan.questions));
   array(plan.files, 'files').forEach((f, i) => {
     const at = `files[${i}]`;
     if (!keys(f, ['path', 'name', 'description', 'screen', 'uses', 'calls', 'services', 'data'], at)) return;

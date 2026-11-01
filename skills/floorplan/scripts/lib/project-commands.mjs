@@ -9,6 +9,7 @@ import { readProject, applyProjectChange, snapshotBaseline, listBaselines, valid
 import { planToScan } from './blueprint.mjs';
 import { assessProject } from './assessment.mjs';
 import { readRepowise } from './repowise.mjs';
+import { questionViews, protectAnswers, recordAnswers } from './questions.mjs';
 import { freshObservedScan } from './native-observation.mjs';
 
 const scripts = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,7 +20,7 @@ export function projectStatus(root) {
   const observedScan = freshObservedScan(root, json(path.join(dir, '.cache/observed.json')));
   const graph = json(path.join(dir, 'graph.json'));
   const observation = readRepowise(dir, root);
-  return { revision: state.revision, plan: state.plan, assessment: assessProject({ plan: state.plan, observedScan, graph, observation }), baselines: listBaselines(dir), observation };
+  return { revision: state.revision, plan: state.plan, questions: questionViews(state.plan), assessment: assessProject({ plan: state.plan, observedScan, graph, observation }), baselines: listBaselines(dir), observation };
 }
 
 export function compileProject(root, dir = mapDir(root), { historyDir = dir, requireAssigned = false } = {}) {
@@ -43,10 +44,21 @@ export function compileProject(root, dir = mapDir(root), { historyDir = dir, req
   return graph;
 }
 
-export async function applyDocuments(root, { expectedRevision, documents, requireAssigned = false }) {
+export async function applyDocuments(root, options) { return publishDocuments(root, options); }
+
+export async function saveAnswers(root, { expectedRevision, answers }) {
+  const state = readProject(mapDir(root));
+  if (state.revision !== expectedRevision) throw new Error('Project revision conflict: o plano mudou. Reabra as perguntas; seu rascunho foi preservado.');
+  const plan = recordAnswers(state.plan, answers);
+  const result = await publishDocuments(root, { expectedRevision, documents: { 'plan.json': plan } }, true);
+  return { revision: result.revision, questions: questionViews(result.plan) };
+}
+
+async function publishDocuments(root, { expectedRevision, documents, requireAssigned = false }, answering = false) {
   const dir = mapDir(root);
   const state = readProject(dir);
   if (state.revision !== expectedRevision) throw new Error('Project revision conflict: atualize o planejamento antes de aplicar.');
+  if (!answering && documents && Object.hasOwn(documents, 'plan.json')) documents = { ...documents, 'plan.json': protectAnswers(state.plan, documents['plan.json']) };
   documents = preserveScreenIdentities(dir, state, documents);
   return applyProjectChange(dir, { expectedRevision, documents }, async staging => {
     // Copy only validated visual files. Never follow a project symlink into another folder.

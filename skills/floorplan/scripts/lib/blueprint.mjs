@@ -8,6 +8,7 @@
 //                          { summary, issues } shape, so the Health panel shows it.
 
 import path from 'node:path';
+import { questionViews } from './questions.mjs';
 import { classify, toPosix } from './common.mjs';
 import { matchCalls } from './routes.mjs';
 import { validatePlan } from './project.mjs';
@@ -95,7 +96,7 @@ export function planToScan(plan, root) {
   (Array.isArray(plan.questions) ? plan.questions : []).forEach((q, i) => {
     const text = isStr(q) ? q : q?.question;
     if (!isStr(text)) return err(`questions[${i}] needs a question`);
-    questions.push({ question: text.trim(), about: strArr(q?.about) });
+    questions.push({ ...questionViews({ questions: [q] })[0], question: text.trim(), about: strArr(q?.about) });
   });
 
   const scan = {
@@ -181,15 +182,16 @@ export function buildPlanHealth({ graph, scan }) {
 
   // ---------- open questions from the PRD ----------
   bp.questions?.forEach((q, k) => {
+    if (q.state === 'resolved') return;
     const items = [...new Set(q.about.map(refOf).filter(Boolean))];
     issues.push({
-      id: 'plan-question:' + k, kind: 'question', severity: 'medium',
+      id: 'plan-question:' + (q.id || k), questionId: q.id, kind: 'question', severity: 'medium',
       change: `Open question: "${q.question}" My answer: `,
-      title: q.question,
-      detail: 'The PRD doesn’t answer this, and the answer changes what gets built. Decide it before building the parts it touches.',
+      title: q.state === 'answered' ? `Resposta aguardando incorporação: ${q.question}` : q.state === 'stale' ? `Revisar resposta: ${q.question}` : q.question,
+      detail: q.state === 'answered' ? 'Sua resposta está salva. O agente precisa incorporá-la aos requisitos, decisões e fluxos afetados.' : q.state === 'stale' ? 'A pergunta mudou após a resposta. Confira as alternativas atuais; a resposta anterior foi preservada.' : 'Esta decisão muda o planejamento. Responda às alternativas preparadas ou escreva sua própria resposta.',
       items, notes: Object.fromEntries(items.map((id) => [id, 'Depends on an open question'])),
       locations: [],
-      fix: [`Open question in the blueprint (floorplan/plan.json): ${q.question}`, ``, `Explain the options to me in plain words, with what each would mean for the parts it touches${q.about.length ? ` (${q.about.join(', ')})` : ''}, and recommend one. After I decide, update plan.json and architecture.json to match and remove the question from plan.json's questions.`, rebuild].join('\n'),
+      fix: [`Open question in the blueprint (floorplan/plan.json): ${q.question}`, ``, `Explain the options to me in plain words, with what each would mean for the parts it touches${q.about.length ? ` (${q.about.join(', ')})` : ''}, and recommend one. After I decide, update plan.json and architecture.json to match and preserve the question and its answer. Record resolution with the exact answerHash, an ISO at timestamp and a summary of what changed. Read node floorplan/query.mjs project before changing the plan.`, rebuild].join('\n'),
     });
   });
 

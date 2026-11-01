@@ -59,3 +59,8 @@ O perfil de cliente não inclui caminhos de código, URLs de origem das capturas
 O método foi informado por [Superpowers](https://github.com/obra/superpowers) e [Ponytail](https://github.com/DietrichGebert/ponytail), com referências e versões registradas no guia. O adaptador chama a interface pública do [Repowise](https://github.com/repowise-dev/repowise); seus pacotes não são incorporados ao plugin.
 
 A consulta de status também confere a atualidade da análise nativa pelo conteúdo e inventário dos arquivos, mesmo sem Git. Mudanças desde a leitura tornam a evidência anterior desatualizada. Leituras que excedem os limites de tempo, quantidade ou tamanho ficam explicitamente incompletas; não são tratadas como aprovação.
+
+
+## Perguntas ao usuário
+
+As decisões pendentes podem ser respondidas diretamente no mapa, com alternativas, recomendação, resposta livre e acompanhamento até a incorporação ao plano. Veja [Perguntas e respostas](questions.md) para o contrato, estados, persistência e retomada pelo agente.

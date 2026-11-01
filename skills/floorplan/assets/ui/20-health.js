@@ -112,9 +112,10 @@
   }
   // a served blueprint settles review items on the map: the request goes into the Ask bar's Change mode,
   // for the person to finish (an open question needs their answer) or edit, then send
-  const here = (issue) => PLAN && !!issue.change && !!SC.canChange?.();
+  const here = (issue) => !SC.exported && ((issue.kind === 'question' && !!SERVER && !!SC.openQuestions) || (PLAN && !!issue.change && !!SC.canChange?.()));
   function resolveHere(issue) {
     if (isOpen) closeList();
+    if (issue.kind === 'question' && SC.openQuestions) { SC.openQuestions(issue.questionId); return; }
     if (!SC.draftChange(issue.change)) { fixWith(issue); return; }
     SC.toast(issue.kind === 'question' ? 'Type your answer, then press Enter' : 'Edit the request if you like, then press Enter');
   }
@@ -179,8 +180,8 @@
       ${locText(issue)}
       <div class="hc-a">
         ${onMap(issue) ? `<button class="btn soft" data-hc-show="${idx}">${SC.iconI('search')}Show on map</button>` : ''}
-        ${SC.exported ? '' : here(issue) ? `<button class="btn soft" data-hc-here="${idx}">${SC.iconI('spark')}Resolve on the map</button>` : `<button class="btn soft" data-hc-fix="${idx}">${SC.iconI('spark')}${FIX} with ${A.name}</button>`}
-        ${canDismiss ? `<button class="btn soft" data-hc-dismiss="${idx}">${SC.iconI('check')}Not a problem</button>` : ''}
+        ${SC.exported ? '' : here(issue) ? `<button class="btn soft" data-hc-here="${idx}">${SC.iconI('spark')}${issue.kind === 'question' ? (window.FloorplanI18n?.get() === 'en' ? 'Answer question' : 'Responder pergunta') : 'Resolve on the map'}</button>` : `<button class="btn soft" data-hc-fix="${idx}">${SC.iconI('spark')}${FIX} with ${A.name}</button>`}
+        ${canDismiss && issue.kind !== 'question' ? `<button class="btn soft" data-hc-dismiss="${idx}">${SC.iconI('check')}Not a problem</button>` : ''}
       </div>
     </div>`;
   };

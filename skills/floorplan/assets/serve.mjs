@@ -185,7 +185,7 @@ if (cli) { try { version = execFileSync(cli.cmd, [...cli.args, '--version'], { e
 
 // The page, the graph, and the instructions and answer schema (from query.mjs's inlined graph-query
 // code). Loaded at start and again whenever the map is rebuilt.
-const inject = `<script>window.FLOORPLAN_SERVER=${JSON.stringify({ token, cli: !!cli, engine, want, version, model: model || null, change: canChange })};</script>`;
+const inject = `<script>window.FLOORPLAN_SERVER=${JSON.stringify({ token, projectId: crypto.createHash('sha256').update(root).digest('hex').slice(0,24), cli: !!cli, engine, want, version, model: model || null, change: canChange })};</script>`;
 let page, G, core, MODES;
 function load() {
   const html = fs.readFileSync(path.join(here, 'index.html'), 'utf8');
@@ -546,6 +546,20 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/project' && req.method === 'GET') {
       try { const data = (await projectCommands()).projectStatus(root); res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(data)); }
       catch (e) { res.writeHead(409, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ error: e.message })); }
+    }
+    if (url.pathname === '/api/project/answers' && req.method === 'POST') {
+      let raw = '', size = 0, tooLarge = false;
+      req.setEncoding('utf8');
+      req.on('data', d => { size += Buffer.byteLength(d); if (size > 1024 * 1024) tooLarge = true; else if (!tooLarge) raw += d; });
+      req.on('end', async () => {
+        try {
+          if (tooLarge) throw new Error('Respostas excedem o tamanho permitido.');
+          const body = JSON.parse(raw);
+          const result = await (await projectCommands()).saveAnswers(root, { expectedRevision: body.expectedRevision, answers: body.answers });
+          load(); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(result));
+        } catch (e) { res.writeHead(/conflict|ocupado/.test(e.message) ? 409 : 400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: e.message })); }
+      });
+      return;
     }
     if (url.pathname === '/api/project/baseline' && req.method === 'POST') {
       let raw = '';

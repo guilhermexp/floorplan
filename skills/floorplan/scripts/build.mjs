@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { questionViews } from './lib/questions.mjs';
 import { freshObservedScan } from './lib/native-observation.mjs';
 // floorplan builder: validate floorplan/architecture.json against the scan, assign every file to a
 // node, attach import/HTTP/external edges, and write floorplan/graph.json + floorplan/index.html.
@@ -436,8 +437,8 @@ try { graph.visuals = buildVisuals({ graph, outDir, warn }); } catch (e) { fail(
 if (scan.blueprint) try { graph.health = buildPlanHealth({ graph, scan }); } catch (e) { warn(`design review failed: ${e.message}`); graph.health = { issues: [] }; }
 const observation = readRepowise(outDir, root);
 const assessment = assessProject({ plan, observedScan, graph, observation });
-graph.lifecycle = { revision: projectState.revision, plan, assessment, baselines: listBaselines(args['history-dir'] || outDir), observation };
-const lifecycleFindings = [...(assessment.findings || []), ...(observation?.findings || [])];
+graph.lifecycle = { revision: projectState.revision, plan, questions: questionViews(plan), assessment, baselines: listBaselines(args['history-dir'] || outDir), observation };
+const lifecycleFindings = [...(assessment.findings || []), ...(observation?.findings || []), ...(!scan.blueprint && planned?.scan ? buildPlanHealth({ graph, scan: planned.scan }).issues.filter(i => i.kind === 'question') : [])];
 if (lifecycleFindings.length) {
   graph.health ||= { issues: [], summary: { high: 0, medium: 0, low: 0 } };
   graph.health.issues.push(...lifecycleFindings);

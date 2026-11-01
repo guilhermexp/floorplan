@@ -8,6 +8,8 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { shopApp, scanAndBuild, cleanup } from './helpers.mjs';
 
+import { projectStatus, applyDocuments } from '../skills/floorplan/scripts/lib/project-commands.mjs';
+
 let root, server, base, token;
 before(async () => {
   root = shopApp();
@@ -109,4 +111,23 @@ test('files outside the map folder are never served', async () => {
 test('a malformed address gets an error, and the server keeps running', async () => {
   assert.equal((await fetch(base + '/%E0%A4%A')).status, 400);
   assert.equal((await fetch(base + '/')).status, 200);
+});
+
+
+test('question answers require same-origin authentication, preserve revision and reach agent context', async () => {
+  const headers = { 'x-floorplan-token': token };
+  const plan = { $schema: 'floorplan/plan@2', stage: 'scope', objective: 'Escolher a agenda', files: [], questions: [{ id: 'q:agenda', question: 'Qual agenda?', options: [{ id: 'one', label: 'Uma', description: 'Uma equipe compartilha a agenda.', recommended: true }, { id: 'many', label: 'Separadas', description: 'Cada equipe opera sua agenda.' }] }] };
+  await applyDocuments(root, { expectedRevision: projectStatus(root).revision, documents: { 'plan.json': plan } });
+  const current = await (await api('/api/project', { headers })).json();
+  const body = JSON.stringify({ expectedRevision: current.revision, answers: [{ id: 'q:agenda', questionHash: current.questions[0].questionHash, selected: ['one'], text: 'Equipe atual 🐾' }] });
+  assert.equal((await api('/api/project/answers', { method: 'POST', body })).status, 403);
+  assert.equal((await api('/api/project/answers', { headers: { ...headers, origin: 'https://other.example' }, method: 'POST', body })).status, 403);
+  assert.equal(projectStatus(root).questions[0].state, 'open');
+  const saved = await api('/api/project/answers', { headers, method: 'POST', body });
+  assert.equal(saved.status, 200);assert.equal((await saved.json()).questions[0].state, 'answered');
+  assert.equal((await api('/api/project/answers', { headers, method: 'POST', body })).status, 409);
+  assert.equal(projectStatus(root).questions[0].answer.text, 'Equipe atual 🐾');
+  const graph = JSON.parse(fs.readFileSync(path.join(root, 'floorplan/graph.json'), 'utf8'));
+  assert.equal(graph.lifecycle.questions[0].answer.labels[0], 'Uma');
+  assert.ok(graph.health.issues.some(i => i.kind === 'question'), 'pending answers also remain visible in a map of existing code');
 });

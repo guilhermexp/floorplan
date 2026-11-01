@@ -1,6 +1,7 @@
 // A client presentation is an allowlisted projection of one immutable local baseline.
 // It never reads current documents or live image paths, and its gallery works offline.
 import fs from 'node:fs';
+import { questionViews } from './questions.mjs';
 import path from 'node:path';
 import { readBaseline } from './project.mjs';
 
@@ -40,7 +41,7 @@ export function exportClient(outDir, baselineId) {
     included: strings(plan.scope?.included), excluded: strings(plan.scope?.excluded),
     requirements: array(plan.requirements).map(r => ({ title: text(r.title), description: text(r.description), criteria: array(r.criteria).map(c => text(c.text)) })),
     decisions: array(plan.decisions).map(d => ({ title: text(d.title), choice: text(d.choice), rationale: text(d.rationale) })),
-    questions: array(plan.questions).map(q => typeof q === 'string' ? q : text(q.question)),
+    questions: questionViews(plan).filter(q => q.state !== 'resolved').map(q => text(q.question) + (q.state === 'answered' ? ' — Resposta registrada; aguardando incorporação ao plano.' : q.state === 'stale' ? ' — Resposta precisa de revisão.' : '')),
     areas: array(arch.nodes).map(n => ({ title: text(n.label), summary: text(n.summary) })),
     relationships: array(arch.edges).filter(e => labels.has(e.from) && labels.has(e.to)).map(e => ({ from: labels.get(e.from), to: labels.get(e.to), label: text(e.label) })),
     tour: array(arch.tour).map(s => ({ title: text(s.title), note: text(s.note) })),
