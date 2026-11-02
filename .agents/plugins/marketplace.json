@@ -1,7 +1,7 @@
 {
-  "name": "floorplan",
+  "name": "floorplan-guilhermexp",
   "interface": {
-    "displayName": "Floorplan"
+    "displayName": "Floorplan — Guilhermexp"
   },
   "plugins": [
     {

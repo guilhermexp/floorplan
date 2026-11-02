@@ -1,17 +1,17 @@
 {
-  "name": "floorplan",
+  "name": "floorplan-guilhermexp",
   "owner": {
-    "name": "Hayden Smith",
-    "url": "https://github.com/haydenschmitty"
+    "name": "Guilhermexp",
+    "url": "https://github.com/guilhermexp"
   },
   "metadata": {
-    "description": "Floorplan: an interactive map of your codebase for Claude Code."
+    "description": "Fork do Floorplan com planejamento, stack técnica, jornadas, decisões e visuais."
   },
   "plugins": [
     {
       "name": "floorplan",
       "source": "./",
-      "description": "An interactive map of your codebase: every part, file and web request with a plain-English name and description, plus a health check, screens, guided flows and recent-work highlights.",
+      "description": "Planejamento contínuo, arquitetura, perguntas, stack técnica e galeria por jornadas para Claude Code e Codex.",
       "category": "productivity"
     }
   ]

@@ -1,4 +1,4 @@
-# Floorplan in Codex
+# Floorplan — Guilhermexp no Codex
 
 Floorplan works in [Codex](https://developers.openai.com/codex) the same way it works in Claude Code: the same skill, scripts and map, on your own ChatGPT sign-in. There are no API keys to set up.
 
@@ -12,15 +12,15 @@ Floorplan works in [Codex](https://developers.openai.com/codex) the same way it 
 **In the Codex app** (no terminal needed):
 
 1. Open **Plugins** and choose **Add a marketplace**.
-2. For **Source**, enter `haydenschmitty/floorplan`. Leave **Git ref** empty, and click **Add marketplace**.
-3. Find **Floorplan** in the list and click **+** to install it.
+2. For **Source**, enter `guilhermexp/floorplan`. Leave **Git ref** empty, and click **Add marketplace**.
+3. Find **Floorplan — Guilhermexp** in the list and click **+** to install it.
 4. Start a new chat.
 
 **From a terminal**, with the [Codex CLI](https://developers.openai.com/codex/cli):
 
 ```bash
-codex plugin marketplace add haydenschmitty/floorplan
-codex plugin add floorplan@floorplan
+codex plugin marketplace add guilhermexp/floorplan
+codex plugin add floorplan@floorplan-guilhermexp
 ```
 
 The app and the CLI share their plugins, so installing in one makes Floorplan available in both.
@@ -62,13 +62,13 @@ It finds `codex` on your PATH, and on Windows the CLI that comes with the Codex 
 In the app, open **Plugins**, find the Floorplan marketplace and choose **Upgrade** to get the latest version, or **Remove marketplace** to take it out. From a terminal:
 
 ```bash
-codex plugin marketplace upgrade floorplan
-codex plugin add floorplan@floorplan
+codex plugin marketplace upgrade floorplan-guilhermexp
+codex plugin add floorplan@floorplan-guilhermexp
 ```
 
 ```bash
-codex plugin remove floorplan@floorplan
-codex plugin marketplace remove floorplan
+codex plugin remove floorplan@floorplan-guilhermexp
+codex plugin marketplace remove floorplan-guilhermexp
 ```
 
 Your maps stay in each project's `floorplan/` folder until you delete them.
@@ -79,7 +79,17 @@ Point Codex at your local clone instead of GitHub:
 
 ```bash
 codex plugin marketplace add /path/to/floorplan
-codex plugin add floorplan@floorplan
+codex plugin add floorplan@floorplan-guilhermexp
 ```
 
-Codex copies a local plugin into its cache when you add it (unlike Claude Code, which runs a local plugin straight from the folder). After you change the plugin, run `codex plugin add floorplan@floorplan` again and start a new session.
+Codex copies a local plugin into its cache when you add it (unlike Claude Code, which runs a local plugin straight from the folder). After you change the plugin, run `codex plugin add floorplan@floorplan-guilhermexp` again and start a new session.
+
+## Desenvolvimento e atualização deste fork
+
+O marketplace desta versão se chama `floorplan-guilhermexp`, separado do original. A skill continua sendo `$floorplan`. O crédito do autor original e a licença MIT foram preservados.
+
+Durante o desenvolvimento, registre o caminho absoluto deste checkout com `codex plugin marketplace add /caminho/para/floorplan` e instale `codex plugin add floorplan@floorplan-guilhermexp`. O resultado JSON de `codex plugin add --json` informa o cache instalado. Confira a cópia com `node tools/checksums.mjs --check /caminho/do/cache`.
+
+A instalação é uma cópia: depois de alterar e validar o plugin, atualize sua versão e CHECKSUMS.txt, execute o comando de instalação novamente e inicie um novo chat. Para trocar a origem local pela publicação do GitHub, remova somente o marketplace `floorplan-guilhermexp`, adicione `guilhermexp/floorplan` e reinstale o mesmo plugin.
+
+O plugin não precisa conter projetos reais para funcionar. Mapas, planos, respostas, versões e imagens ficam na pasta ignorada `floorplan/` de cada projeto. O Git do plugin recebe apenas ferramentas, instruções e testes sintéticos. O servidor local é iniciado quando necessário para abrir cada mapa; instalar o plugin não mantém todos os mapas rodando.

@@ -7,7 +7,7 @@
 //        node floorplan/query.mjs path <fromId> <toId>
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const G = JSON.parse(fs.readFileSync(path.join(here, 'graph.json'), 'utf8'));
@@ -18,11 +18,16 @@ const kind = flag('kind'), limit = flag('limit');
 const [cmd, ...rest] = argv;
 try {
   let out;
-  if (cmd === 'overview') out = q.overview();
+  if (cmd === 'project' || cmd === 'context') {
+    const skill = JSON.parse(fs.readFileSync(path.join(here, '.cache/skill.json'), 'utf8'));
+    const commands = await import(pathToFileURL(path.join(skill.dir, 'scripts/lib/project-commands.mjs')).href);
+    out = commands.projectStatus(path.dirname(here));
+  }
+  else if (cmd === 'overview') out = q.overview();
   else if (cmd === 'find') out = q.find(rest.join(' '), kind, limit);
   else if (cmd === 'show') out = q.show(rest[0]);
   else if (cmd === 'path') out = q.path(rest[0], rest[1]);
-  else { console.log('commands: overview | find "<words>" [--kind module|file|endpoint|symbol] | show <id> | path <fromId> <toId>'); process.exit(cmd ? 1 : 0); }
+  else { console.log('commands: project | context | overview | find "<words>" [--kind module|file|endpoint|symbol] | show <id> | path <fromId> <toId>'); process.exit(cmd ? 1 : 0); }
   console.log(JSON.stringify(out, null, 1));
 } catch (e) {
   console.log(JSON.stringify({ error: e.message }));

@@ -173,16 +173,13 @@
     }
   }
   const observe = () => observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['title','aria-label','placeholder']});
-  let button;
   function setLanguage(next) {
     lang = next === 'en' ? 'en' : 'pt-BR';
     try { localStorage.setItem('floorplan.language',lang); } catch {}
     document.documentElement.lang = lang;
     observer.disconnect(); apply(document.body);
-    if (button) { button.querySelector('.bl').textContent = lang === 'pt-BR' ? 'PT' : 'EN'; button.title = lang === 'pt-BR' ? 'Idioma: Português' : 'Language: English'; button.setAttribute('aria-label',button.title); }
     observe(); window.dispatchEvent(new CustomEvent('floorplan-language-change',{detail:lang}));
   }
   window.FloorplanI18n = Object.freeze({ get:()=>lang, set:setLanguage, t:translate, ownsText:(node)=>{ const s = originals.get(node)?.source || node.data || ''; return toPortuguese(s) !== s || !!reverse[s.trim()]; } });
-  button = SC.addHeaderButton({id:'language-btn',label:'PT',svg:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18z"/>',title:'Idioma: Português',onClick:()=>SC.modal({title:lang === 'pt-BR' ? 'Idioma' : 'Language',html:lang === 'pt-BR' ? '<p>Escolha o idioma da interface.</p>' : '<p>Choose the interface language.</p>',actions:[{label:'Português',onClick:()=>setLanguage('pt-BR')},{label:'English',onClick:()=>setLanguage('en')}]})});
   setLanguage(lang);
 })();

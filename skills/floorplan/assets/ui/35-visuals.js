@@ -106,17 +106,24 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
 .vs-form textarea { resize:vertical; }
 .vs-error { padding:12px; color:var(--warn-text); background:var(--warn-bg); border-radius:10px; font-size:13px; }
 .vs-notice { color:var(--text-3); font-size:12px; line-height:1.6; padding:12px 0; }
+.vs-gallery[open] { display:flex; flex-direction:column; width:calc(100vw - 32px); height:calc(100dvh - 32px); overflow:hidden; }
+.vs-gallery > .vs-head { flex:none; padding:14px 20px 12px; }
+.vs-gallery .vs-head h2 { font-size:20px; }
+.vs-gallery > .vs-body { display:flex; flex-direction:column; flex:1; min-height:0; padding:12px 20px 16px; overflow:hidden; }
+.vs-gallery .vs-coverage, .vs-gallery .vs-toolbar, .vs-gallery [data-count] { flex:none; }
+.vs-gallery .vs-browser { flex:1; overflow:hidden; }
+.vs-gallery .vs-library { height:100%; overflow:auto; padding:4px; }
+.vs-gallery .vs-thumb { height:clamp(220px,30dvh,360px); }
 .vs-browser { min-height:0; }
 .vs-preview-pane[hidden] { display:none; }
-.vs-browsing { height:min(940px,calc(100dvh - 32px)); overflow:hidden; }
-.vs-browsing .vs-body { display:flex; flex-direction:column; min-height:0; height:calc(100% - 100px); }
+.vs-browsing { overflow:hidden; }
 .vs-browsing .vs-coverage { display:none; }
 .vs-browsing .vs-toolbar { flex:none; margin-bottom:6px; }
 .vs-browsing [data-count] { margin:0 0 8px; padding:6px 0; flex:none; }
-.vs-browsing .vs-browser { display:grid; grid-template-columns:280px minmax(0,1fr); gap:24px; flex:1; overflow:hidden; }
+.vs-browsing .vs-browser { display:grid; grid-template-columns:clamp(300px,25vw,420px) minmax(0,1fr); gap:20px; flex:1; overflow:hidden; }
 .vs-browsing .vs-library { overflow:auto; min-height:0; padding:2px 8px 4px 2px; }
 .vs-browsing .vs-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-.vs-browsing .vs-thumb { height:130px; }
+.vs-browsing .vs-thumb { height:clamp(200px,26dvh,300px); }
 .vs-browsing .vs-screen-copy { padding:10px; }
 .vs-browsing .vs-screen-copy small { display:none; }
 .vs-browsing .vs-screen-copy strong { font-size:11px; margin:0; }
@@ -131,7 +138,17 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
 .vs-carousel-nav .btn { min-height:44px; min-width:44px; font-size:20px; }
 .vs-carousel-nav span { font-size:12px; color:var(--text-3); font-variant-numeric:tabular-nums; min-width:64px; text-align:center; }
 .vs-carousel-footer .vs-actions { margin:0; }
-@media(max-width:760px) { .vs-browsing .vs-browser{grid-template-columns:minmax(0,1fr)} .vs-browsing .vs-library{display:none} .vs-browsing{height:calc(100dvh - 12px)} .vs-browsing .vs-body{padding:12px} .vs-preview-heading h3{font-size:15px} .vs-carousel-nav{gap:6px} }
+.vs-toolbar [data-journey] { max-width:38%; }
+.vs-step-note { margin:0; flex:none; max-height:44px; overflow:auto; font-size:12px; line-height:1.5; color:var(--text-2); }
+.vs-transitions { flex:none; font-size:12px; }
+.vs-transitions summary { cursor:pointer; padding:6px 0; }
+.vs-transitions [data-transitions] { display:flex; gap:8px; max-height:110px; overflow:auto; padding:4px; }
+.vs-transitions button { display:flex; flex-direction:column; align-items:flex-start; flex-shrink:0; border-radius:10px; text-align:left; min-width:180px; max-width:300px; white-space:normal; }
+.vs-transitions small { display:block; font-size:11px; color:var(--text-3); margin-top:4px; }
+.vs-actions [data-version] { max-width:220px; }
+@media(max-width:760px) { .vs-toolbar [data-journey] { max-width:100%; } }
+
+@media(max-width:760px) { .vs-browsing .vs-browser{grid-template-columns:minmax(0,1fr)} .vs-browsing .vs-library{display:none} .vs-gallery[open]{width:calc(100vw - 12px);height:calc(100dvh - 12px);max-height:calc(100dvh - 12px)} .vs-browsing .vs-body{padding:12px} .vs-preview-heading h3{font-size:15px} .vs-carousel-nav{gap:6px} }
 @media(max-width:640px) { .vs-dialog{width:calc(100vw - 12px);max-height:calc(100dvh - 12px);border-radius:14px} .vs-head,.vs-body{padding:16px} .vs-toolbar,.vs-pair{display:flex;flex-direction:column} .vs-form{grid-template-columns:1fr} .vs-grid{grid-template-columns:repeat(2,minmax(0,1fr))} .vs-thumb{height:132px} }
 `;
   document.head.append(css);
@@ -251,72 +268,101 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
     if (s) { Screens.show(s); SC.select('v:' + v.id); }
   });
 
-  function catalog() {
-    const proposals = records.filter((v) => !v.unresolved && v.kind === 'proposal').length;
-    const captures = records.filter((v) => !v.unresolved && v.kind === 'capture').length;
-    const missing = screens.filter((s) => !forScreen(s).some(usable)).length;
-    const orphan = records.filter((v) => v.unresolved).length;
-    const d = dialog('Visuais das telas', `${G.project.name} · o planejamento e a implementação no mesmo lugar.`, `<div class="vs-coverage"><span><b>${screens.length}</b> telas</span><span><b>${proposals}</b> propostas</span><span><b>${captures}</b> capturas reais</span><span><b>${missing}</b> sem imagem</span></div>
-      ${orphan ? `<p class="vs-error">${orphan} visuais sem tela correspondente. Os registros foram preservados em visuals.json para reassociar.</p>` : ''}
-      <div class="vs-toolbar"><input type="search" aria-label="Buscar tela" placeholder="Buscar por nome, ID ou endereço…"><select aria-label="Filtrar visuais"><option value="all">Todas as telas</option><option value="proposal">Com propostas</option><option value="capture">Com capturas reais</option><option value="empty">Sem imagem</option></select></div><p class="vs-notice" data-count aria-live="polite"></p><div class="vs-browser"><div class="vs-library"><div class="vs-grid"></div></div><section class="vs-preview-pane" aria-label="Preview da imagem" hidden>
-        <div class="vs-preview-heading"><div><h3 data-preview-title tabindex="-1"></h3><p data-preview-meta></p></div><button class="btn soft" data-thumbnails>Miniaturas</button></div>
-        <div class="vs-carousel-image"></div><div class="vs-carousel-footer"><div class="vs-carousel-nav"><button class="btn soft" data-prev aria-label="Imagem anterior">←</button><span data-position aria-live="polite"></span><button class="btn soft" data-next aria-label="Próxima imagem">→</button></div><div class="vs-actions"><button class="btn soft" data-expand>Ampliar</button><button class="btn soft" data-open-canvas>Abrir no canvas</button></div></div>
-      </section></div>`);
-    const grid = d.querySelector('.vs-grid'), pane = d.querySelector('.vs-preview-pane');
-    let slides = [], index = -1;
-    const currentKey = () => slides[index]?.visual?.id || slides[index]?.screen.id;
-    function preview(next, focus = false) {
-      if (!slides.length) { pane.hidden = true; d.classList.remove('vs-browsing'); index = -1; return; }
-      index = Math.max(0, Math.min(slides.length - 1, next));
-      const { screen, visual } = slides[index];
-      pane.hidden = false; d.classList.add('vs-browsing');
-      d.querySelector('[data-preview-title]').textContent = screen.name;
-      d.querySelector('[data-preview-meta]').textContent = visual ? [kindName(visual), visual.version, visual.viewport, visual.state, visual.approved ? 'Aprovada' : ''].filter(Boolean).join(' · ') : 'Esta tela ainda não tem imagens.';
-      d.querySelector('.vs-carousel-image').innerHTML = visual ? deviceFrame(visual) : '<p class="vs-empty">Aguardando a primeira proposta ou captura real desta tela.</p>';
-      d.querySelector('[data-position]').textContent = `${index + 1} / ${slides.length}`;
-      d.querySelector('[data-prev]').disabled = index === 0;
-      d.querySelector('[data-next]').disabled = index === slides.length - 1;
-      d.querySelector('[data-expand]').disabled = !usable(visual);
-      grid.querySelectorAll('[data-screen]').forEach((b) => b.setAttribute('aria-current', String(b.dataset.screen === screen.id)));
+  function catalog(initialJourney) {
+    const journeys = G.navigation?.journeys || [], byScreen = new Map(screens.map(s=>[s.id,s]));
+    const d = dialog('Visuais das telas', `${G.project.name} · navegue pelas jornadas ou consulte o catálogo completo.`, `
+      <div class="vs-toolbar"><select data-journey aria-label="Jornada de navegação">${journeys.map(j=>`<option value="${h(j.id)}">${h(j.actor)} · ${h(j.title)}</option>`).join('')}<option value="">Todas as telas · catálogo</option></select><input data-search type="search" aria-label="Buscar tela" placeholder="Buscar nas miniaturas…"><select data-kind aria-label="Filtrar visuais"><option value="all">Todos os visuais</option><option value="proposal">Propostas</option><option value="capture">Capturas reais</option><option value="empty">Sem imagem</option></select></div>
+      <p class="vs-notice" data-count aria-live="polite"></p><div class="vs-browser"><div class="vs-library"><div class="vs-grid"></div></div><section class="vs-preview-pane" aria-label="Preview da imagem" hidden>
+      <div class="vs-preview-heading"><div><h3 data-preview-title tabindex="-1"></h3><p data-preview-meta></p></div><button class="btn soft" data-thumbnails>Miniaturas</button></div>
+      <p class="vs-step-note" data-step-note></p><div class="vs-carousel-image"></div>
+      <details class="vs-transitions" hidden><summary>Ações e caminhos desta etapa</summary><div data-transitions></div></details>
+      <div class="vs-carousel-footer"><div class="vs-carousel-nav"><button class="btn soft" data-prev aria-label="Etapa anterior">←</button><span data-position aria-live="polite"></span><button class="btn soft" data-next aria-label="Próxima etapa">→</button></div><div class="vs-actions"><select data-version aria-label="Versão da imagem" hidden></select><button class="btn soft" data-expand>Ampliar</button><button class="btn soft" data-open-canvas>Abrir no canvas</button></div></div></section></div>`);
+    d.classList.add('vs-gallery');
+    const grid = d.querySelector('.vs-grid'), pane=d.querySelector('.vs-preview-pane'), journeySelect=d.querySelector('[data-journey]');
+    if(typeof initialJourney==='string' && journeys.some(j=>j.id===initialJourney)) journeySelect.value=initialJourney;
+    let journey, player, slides=[], index=-1, currentVisual;
+    const versions = new Map();
+    const kind = () => d.querySelector('[data-kind]').value;
+    const refs = screen => forScreen(screen).filter(v=>!['proposal','capture'].includes(kind()) || v.kind===kind());
+    const selectedVisual = (screen, step) => {
+      const list=refs(screen);
+      return list.find(v=>v.id===versions.get(step || screen.id)) || list.find(v=>v.approved && usable(v)) || list.find(usable) || list[0];
+    };
+    function previousStep() { const pos=journey?.path.indexOf(player.current); return pos>0 ? journey.path[pos-1] : null; }
+    function preview(next, focus=false) {
+      if (!slides.length) { pane.hidden=true; d.classList.remove('vs-browsing'); index=-1; return; }
+      index=Math.max(0,Math.min(slides.length-1,next));
+      const slide=slides[index], screen=slide.screen, step=slide.step;
+      if(player && player.current!==step.id) player.inspect(step.id);
+      currentVisual=journey ? selectedVisual(screen,step.id) : slide.visual;
+      pane.hidden=false; d.classList.add('vs-browsing');
+      d.querySelector('[data-preview-title]').textContent=screen.name;
+      d.querySelector('[data-preview-meta]').textContent=currentVisual ? [kindName(currentVisual),currentVisual.version,currentVisual.viewport,currentVisual.state].filter(Boolean).join(' · ') : 'Sem visual correspondente ao filtro. A etapa continua na jornada.';
+      d.querySelector('[data-step-note]').textContent=step ? [step.note,step.end?'Resultado desta jornada.':''].filter(Boolean).join(' ') : '';
+      d.querySelector('[data-step-note]').hidden=!step;
+      d.querySelector('.vs-carousel-image').innerHTML=currentVisual ? deviceFrame(currentVisual) : '<p class="vs-empty">Esta etapa ainda não tem uma imagem disponível neste filtro.</p>';
+      const routeIndex=journey?.path.indexOf(step?.id);
+      d.querySelector('[data-position]').textContent=journey ? routeIndex>=0?`${routeIndex+1} / ${journey.path.length}`:'Alternativa' : `${index+1} / ${slides.length}`;
+      const nextEdge=player?.next();
+      d.querySelector('[data-prev]').disabled=journey ? !player.history.length && !previousStep() : index===0;
+      d.querySelector('[data-next]').disabled=journey ? !nextEdge : index===slides.length-1;
+      d.querySelector('[data-next]').title=nextEdge ? [nextEdge.action,nextEdge.condition].filter(Boolean).join(' — ') : journey?'Escolha uma ação desta etapa ou volte.':'Próxima imagem';
+      d.querySelector('[data-expand]').disabled=!usable(currentVisual);
+      d.querySelector('[data-open-canvas]').disabled=!byScreen.has(screen.id);
+      const selector=d.querySelector('[data-version]'), list=journey?refs(screen):[];
+      selector.hidden=list.length<2;
+      selector.innerHTML=list.map(v=>`<option value="${h(v.id)}">${h([kindName(v),v.version,v.state].filter(Boolean).join(' · '))}</option>`).join('');
+      if(currentVisual) selector.value=currentVisual.id;
+      const edges=player?.outgoing() || [], branchBox=d.querySelector('.vs-transitions');
+      branchBox.hidden=!edges.length;
+      // Conditions are explicit: choosing a transition previews a proposal, never executes it.
+      d.querySelector('[data-transitions]').innerHTML=edges.map((e,n)=>`<button class="btn soft" data-edge="${n}"><b>${h(e.action)}</b>${e.condition?`<small>${h(e.condition)}</small>`:''}<small>→ ${h(byScreen.get(journey.steps.find(s=>s.id===e.to)?.screen)?.name || journey.steps.find(s=>s.id===e.to)?.screen)}</small></button>`).join('');
+      branchBox.open=!!journey && !nextEdge && edges.length>0 && !step.end;
+      d.querySelectorAll('[data-edge]').forEach(b=>b.onclick=()=>{ if(player.go(edges[+b.dataset.edge].to)) preview(slides.findIndex(s=>s.step.id===player.current)); });
+      grid.querySelectorAll('[data-slide]').forEach(b=>b.setAttribute('aria-current',String(+b.dataset.slide===index)));
       wireImages(pane);
-      if (focus) d.querySelector('[data-preview-title]').focus({ preventScroll:true });
+      if(focus) d.querySelector('[data-preview-title]').focus({preventScroll:true});
     }
-    d.querySelector('[data-prev]').onclick = () => preview(index - 1);
-    d.querySelector('[data-next]').onclick = () => preview(index + 1);
-    d.querySelector('[data-thumbnails]').onclick = () => {
-      pane.hidden = true; d.classList.remove('vs-browsing');
-      const b = [...grid.querySelectorAll('[data-screen]')].find((b) => b.dataset.screen === slides[index]?.screen.id);
-      b?.focus({preventScroll:true}); b?.scrollIntoView({block:'nearest'});
-    };
-    d.querySelector('[data-expand]').onclick = () => { if (usable(slides[index]?.visual)) enlarge(slides[index].visual); };
-    d.querySelector('[data-open-canvas]').onclick = () => { const s = slides[index]?.screen; if (s) { d.close(); Screens.show(s); } };
-    d.addEventListener('keydown', (e) => {
-      if (pane.hidden || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); preview(index + (e.key === 'ArrowRight' ? 1 : -1)); }
-    });
-    const render = () => {
-      const words = d.querySelector('input').value.toLowerCase().split(/\s+/).filter(Boolean), filter = d.querySelector('select').value;
-      const list = screens.filter((s) => words.every((w) => `${s.name} ${s.url} ${s.file}`.toLowerCase().includes(w))).filter((s) => filter === 'all' || (filter === 'empty' ? !forScreen(s).some(usable) : forScreen(s).some((v) => v.kind === filter)));
-      d.querySelector('[data-count]').textContent = `${list.length} de ${screens.length} telas · clique para visualizar aqui`;
-      const previous = currentKey(), wasOpen = !pane.hidden;
-      slides = list.flatMap((screen) => {
-        const refs = forScreen(screen).filter((v) => filter !== 'proposal' && filter !== 'capture' || v.kind === filter);
-        return refs.length ? refs.map((visual) => ({ screen, visual })) : [{ screen, visual:null }];
-      });
-      grid.innerHTML = list.map((s) => {
-        const refs = forScreen(s), thumb = refs.find((v) => v.approved && usable(v)) || refs.find(usable), proposals = refs.filter((v) => v.kind === 'proposal').length;
-        return `<button class="vs-screen" data-screen="${h(s.id)}"><div class="vs-thumb">${thumb ? deviceFrame(thumb) : 'Aguardando imagem'}</div><div class="vs-screen-copy"><strong>${h(s.name)}</strong><small>${proposals} propostas · ${refs.length - proposals} capturas reais</small><small>${h(s.url)}</small></div></button>`;
-      }).join('');
-      if (!list.length) grid.innerHTML = '<p class="vs-empty">Nenhuma tela corresponde a este filtro.</p>';
-      grid.querySelectorAll('[data-screen]').forEach((b) => b.onclick = () => {
-        const refs = slides.filter((x) => x.screen.id === b.dataset.screen);
-        const best = refs.find((x) => x.visual?.approved && usable(x.visual)) || refs.find((x) => usable(x.visual)) || refs[0];
-        preview(slides.indexOf(best), true);
-      }); wireImages(grid);
-      if (wasOpen) { const kept = slides.findIndex((x) => (x.visual?.id || x.screen.id) === previous); preview(kept < 0 ? 0 : kept); }
-    };
-    d.querySelector('input').oninput = render; d.querySelector('select').onchange = render; render(); d.querySelector('input').focus();
+    function move(delta) {
+      if(!journey) return preview(index+delta);
+      if(delta>0) { const edge=player.next(); if(!edge || !player.go(edge.to)) return; }
+      else if(!player.back()) { const target=previousStep(); if(!target) return; player.inspect(target); }
+      preview(slides.findIndex(s=>s.step.id===player.current));
+    }
+    function render(reset=false) {
+      const old=slides[index], words=d.querySelector('[data-search]').value.toLowerCase().split(/\s+/).filter(Boolean);
+      if(reset) { journey=journeys.find(j=>j.id===journeySelect.value); player=journey?window.FloorplanJourneys.createPlayer(journey):null; }
+      if(journey) {
+        const ordered=[...journey.path,...journey.steps.map(s=>s.id).filter(id=>!journey.path.includes(id))];
+        slides=ordered.map(id=>{const step=journey.steps.find(s=>s.id===id);return {step,screen:byScreen.get(step.screen) || {id:step.screen,name:'Tela indisponível no mapa',url:'',file:''}};});
+      } else {
+        slides=screens.filter(s=>words.every(w=>`${s.name} ${s.url} ${s.file}`.toLowerCase().includes(w))).filter(s=>kind()!=='empty' || !forScreen(s).some(usable)).flatMap(screen=>{
+          const list=refs(screen); if(['proposal','capture'].includes(kind()) && !list.length) return [];
+          return list.length?list.map(visual=>({screen,visual})):[{screen}];
+        });
+      }
+      const seen=new Set();
+      grid.innerHTML=slides.map((slide,i)=>{
+        const {screen,step}=slide;
+        if(!journey && seen.has(screen.id)) return ''; seen.add(screen.id);
+        if(journey && (!words.every(w=>`${screen.name} ${screen.url} ${step.note||''}`.toLowerCase().includes(w)) || kind()==='empty' && forScreen(screen).some(usable))) return '';
+        const visual=journey?selectedVisual(screen,step.id):slide.visual, pos=journey?.path.indexOf(step?.id);
+        return `<button class="vs-screen" data-slide="${i}"><div class="vs-thumb">${visual?deviceFrame(visual):'Aguardando imagem'}</div><div class="vs-screen-copy"><strong>${journey?pos>=0?`${pos+1}. `:'Alternativa · ':''}${h(screen.name)}</strong><small>${h(screen.url)}</small></div></button>`;
+      }).join('') || '<p class="vs-empty">Nenhuma miniatura corresponde à busca.</p>';
+      d.querySelector('[data-count]').textContent=journey ? `${journey.actor} · ${journey.goal} · Proposta de navegação. A busca filtra miniaturas, sem pular etapas.` : `${new Set(slides.map(s=>s.screen.id)).size} telas · Catálogo por grupo e endereço; não representa uma jornada.`;
+      grid.querySelectorAll('[data-slide]').forEach(b=>b.onclick=()=>preview(+b.dataset.slide,true));wireImages(grid);
+      if(journey) preview(slides.findIndex(s=>s.step.id===player.current));
+      else if(!pane.hidden) { const kept=reset?-1:slides.findIndex(s=>s.visual?.id===old?.visual?.id && s.screen.id===old?.screen.id); preview(kept<0?0:kept); }
+    }
+    d.querySelector('[data-prev]').onclick=()=>move(-1);d.querySelector('[data-next]').onclick=()=>move(1);
+    d.querySelector('[data-thumbnails]').onclick=()=>{pane.hidden=true;d.classList.remove('vs-browsing');};
+    d.querySelector('[data-expand]').onclick=()=>{if(usable(currentVisual)) enlarge(currentVisual);};
+    d.querySelector('[data-open-canvas]').onclick=()=>{const s=byScreen.get(slides[index]?.screen.id);if(s){d.close();Screens.show(s);}};
+    d.querySelector('[data-version]').onchange=e=>{versions.set(slides[index].step.id,e.target.value);preview(index);};
+    d.addEventListener('keydown',e=>{if(pane.hidden || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))return;if(['ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();move(e.key==='ArrowRight'?1:-1);}});
+    journeySelect.onchange=()=>render(true);d.querySelector('[data-search]').oninput=()=>render();d.querySelector('[data-kind]').onchange=()=>render();render(true);
   }
+  SC.openVisuals = catalog;
   SC.addHeaderButton({ id: 'btn-visuals', label: 'Visuais', icon: 'ui', title: 'Propostas e capturas reais por tela', onClick: catalog });
   SC.addPanelSection('overview', () => ({ top: true, html: `<div class="sec"><h3>Planejado e implementado</h3><p class="pd">${screens.length} telas · ${records.filter((v) => !v.unresolved).length} visuais vinculados</p><button class="btn soft" data-catalog>Explorar visuais</button></div>`, bind: (el) => el.querySelector('[data-catalog]').onclick = catalog }));
 })();

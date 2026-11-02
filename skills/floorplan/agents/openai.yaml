@@ -1,4 +1,4 @@
 interface:
   display_name: "Floorplan"
-  short_description: "Draw an interactive, plain-English map of this codebase"
-  default_prompt: "Use $floorplan to draw a floorplan of this codebase, or update the existing one, and open it."
+  short_description: "Planeje arquitetura, requisitos e telas com histórico local privado"
+  default_prompt: "Use $floorplan para planejar este projeto ou atualizar o mapa existente, comparar escopo e implementação e abrir a interface."

@@ -35,3 +35,7 @@ Use the actual acquisition time and URL, not the example values above. Each impo
 Open **Visuais**, verify that each image appears under the intended screen, and use **Comparar** to show a proposal alongside a capture. Missing sides are legitimate states. Report counts of planned screens, proposals, real captures and screens without images. A capture proves only that view at that time, not backend completeness.
 
 An HTML export includes images only with `--include flows,notes,visuals`. Such exports embed the image bytes; ordinary local maps reference sibling image files. Importing and displaying images does not itself generate mockups or automate a browser.
+
+## Navigation, not alphabetical image order
+
+For planned UI, follow [navigation.md](navigation.md) and attach images to persistent screens used by `plan.journeys`. A journey step and a visual version are different things. The gallery defaults to the first journey, keeps branches and missing images visible, and retains the full catalog as an explicit alternative. Do not silently infer navigation from filenames, backend flows or image-generation order. Reusing a mockup for a different UI state requires an explicit note until a matching visual exists.

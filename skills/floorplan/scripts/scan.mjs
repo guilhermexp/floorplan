@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { discover, gitFiles, gitInfo, classify, toPosix, parseArgs, fmtNum, HARD_IGNORE_DIRS, MAP_DIR, LEGACY_MAP_DIR, isMapDir, mapDir, keepOutOfGit } from './lib/common.mjs';
 import { extract, callableCallsVia } from './lib/extract.mjs';
+import { captureSourceRevision } from './lib/native-observation.mjs';
 import { findIssues } from './lib/health.mjs';
 import { findScreens } from './lib/screens.mjs';
 import { createResolver } from './lib/resolve.mjs';
@@ -22,6 +23,8 @@ const outFile = path.resolve(args.out || path.join(outDir, '.cache', 'scan.json'
 const maxBytes = (Number(args['max-file-kb']) || 2048) * 1024;
 const t0 = Date.now();
 const hash = (s) => createHash('sha1').update(s).digest('hex').slice(0, 12);
+
+const sourceBefore = captureSourceRevision(root, { includeWorktrees: !!args['include-worktrees'] });
 
 // ---------- 1. discover repos and files ----------
 const found = discover(root, { includeWorktrees: !!args['include-worktrees'] });
@@ -67,11 +70,12 @@ for (const { path: p, repo } of fileList) {
   if (!st.isFile()) continue;
   const { category, lang } = classify(p, st.size);
   const f = { path: p, repo, category, lang, bytes: st.size, loc: 0 };
-  if ((category === 'code' || category === 'config' || category === 'docs') && st.size <= maxBytes) {
+  if ((category === 'code' || category === 'config' || category === 'docs' || category === 'data') && st.size <= maxBytes) {
     let src;
-    try { src = fs.readFileSync(abs, 'utf8'); } catch { src = ''; }
+    try { src = fs.readFileSync(abs, 'utf8'); } catch (e) { f.readError = e.code || 'read-failed'; files.push(f); continue; }
     if (src.includes('\u0000')) { f.category = 'asset'; files.push(f); continue; }
     f.loc = src.split('\n').filter((l) => l.trim()).length;
+    f.h = hash(src);
     if (category === 'code' && src.length) {
       try { Object.assign(f, extract(src, lang, p)); } catch (e) { f.extractError = String(e.message || e); }
       // h: exact content. sig: the parts a description depends on (exports, routes, docstring),
@@ -84,7 +88,7 @@ for (const { path: p, repo } of fileList) {
       try { const iss = findIssues(src, f); if (iss?.length) f.issues = iss; } catch (e) { f.healthError = String(e.message || e); }
       try { const scr = findScreens(src, f); if (scr?.length) f.screens = scr; } catch (e) { f.screensError = String(e.message || e); }
     }
-  } else if (category === 'code' || category === 'config' || category === 'docs') {
+  } else if (category === 'code' || category === 'config' || category === 'docs' || category === 'data') {
     // too big to read and parse, but still on the map: count its lines without loading it all
     f.tooLarge = true;
     f.loc = countLines(abs);
@@ -160,13 +164,18 @@ const hosts = [];
 for (const f of files) for (const h of f.hosts || []) hosts.push({ from: f.path, host: h.host, line: h.line });
 
 // ---------- 5. write scan.json ----------
+const sourceRevision = captureSourceRevision(root, { includeWorktrees: !!args['include-worktrees'] });
+const freshness = !sourceBefore.complete || !sourceRevision.complete ? 'unknown' : sourceBefore.hash === sourceRevision.hash ? 'current' : 'stale';
 const scan = {
+  sourceRevision, freshness, includeWorktrees: !!args['include-worktrees'],
   version: 1,
   generatedAt: new Date().toISOString(),
   root: toPosix(root),
   rootName: path.basename(root),
   repos,
   skipped: found.skipped,
+  errors: files.flatMap(f => ['readError', 'extractError', 'healthError', 'screensError'].filter(k => f[k]).map(k => ({ file: f.path, kind: k, message: f[k] }))),
+  coverage: { ...(freshness !== 'current' ? { complete: false } : {}), filesSeen: fileList.length, filesAnalyzed: files.filter(f => f.h).length, unresolved, tooLarge: files.filter(f => f.tooLarge).map(f => f.path), skipped: found.skipped },
   files: files.map((f) => ({
     path: f.path, repo: f.repo, category: f.category, lang: f.lang, loc: f.loc, bytes: f.bytes,
     ...(f.doc ? { doc: f.doc } : {}),
@@ -186,7 +195,10 @@ const scan = {
 };
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 fs.writeFileSync(outFile, JSON.stringify(scan));
-if (!args.out) keepOutOfGit(outDir);
+if (!args.out) {
+  keepOutOfGit(outDir);
+  fs.writeFileSync(path.join(outDir, '.cache', 'observed.json'), JSON.stringify(scan));
+}
 
 function dedupeExt(list) {
   const m = new Map();

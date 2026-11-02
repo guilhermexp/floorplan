@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn, execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { addVisual, buildVisuals, decodeImageDataUrl, embedVisuals, MAX_IMAGE_BYTES } from './visuals-store.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -72,6 +72,8 @@ function exportMap(include, extraFlows = []) {
   else if (out.health) { const list = readDismissed().map(({ reason, ...d }) => d); if (list.length) out.health = { ...out.health, dismissed: list }; else delete out.health.dismissed; }
   if (on.includes('visuals')) out.visuals = embedVisuals(g.visuals, here);
   else delete out.visuals;
+  delete out.lifecycle; // internal planning/evidence is exported only through an explicit client baseline
+  if (out.meta.blueprint) { const { source, ...blueprint } = out.meta.blueprint; out.meta.blueprint = blueprint; }
   const json = JSON.stringify(out).replace(/<\/(script)/gi, '<\\/$1').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   const slug = String(g.project?.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'floorplan';
   return { html: html.slice(0, a + DATA_START.length) + json + html.slice(b), name: `${slug}-map.html`, include: on, plan: !!g.meta?.blueprint };
@@ -183,11 +185,12 @@ if (cli) { try { version = execFileSync(cli.cmd, [...cli.args, '--version'], { e
 
 // The page, the graph, and the instructions and answer schema (from query.mjs's inlined graph-query
 // code). Loaded at start and again whenever the map is rebuilt.
-const inject = `<script>window.FLOORPLAN_SERVER=${JSON.stringify({ token, cli: !!cli, engine, want, version, model: model || null, change: canChange })};</script>`;
+const inject = `<script>window.FLOORPLAN_SERVER=${JSON.stringify({ token, projectId: crypto.createHash('sha256').update(root).digest('hex').slice(0,24), cli: !!cli, engine, want, version, model: model || null, change: canChange })};</script>`;
 let page, G, core, MODES;
 function load() {
   const html = fs.readFileSync(path.join(here, 'index.html'), 'utf8');
-  const g = JSON.parse(fs.readFileSync(path.join(here, 'graph.json'), 'utf8'));
+  const start = html.indexOf(DATA_START), end = html.indexOf(';</script>', start);
+  const g = JSON.parse(html.slice(start + DATA_START.length, end));
   const coreSrc = fs.readFileSync(path.join(here, 'query.mjs'), 'utf8').split('// ---- cli ----')[0];
   const c = new Function(`${coreSrc.replace(/^import .*$/gm, '')}; return { FLOORPLAN_ANSWER_SCHEMA, FLOORPLAN_FLOW_SCHEMA, FLOORPLAN_CHANGE_SCHEMA, floorplanAskInstructions, floorplanFlowInstructions, floorplanChangeInstructions, createGraphQuery };`)();
   c.q = c.createGraphQuery(g);
@@ -198,7 +201,7 @@ function load() {
   MODES = {
     ask: { instructions: core.floorplanAskInstructions(G, 'cli'), schema: core.FLOORPLAN_ANSWER_SCHEMA, file: path.join(here, '.cache', 'answer-schema.json') },
     flow: { instructions: core.floorplanFlowInstructions(G, 'cli'), schema: core.FLOORPLAN_FLOW_SCHEMA, file: path.join(here, '.cache', 'flow-schema.json') },
-    ...(G.meta?.blueprint && canChange ? { change: { instructions: core.floorplanChangeInstructions(G), schema: core.FLOORPLAN_CHANGE_SCHEMA, file: path.join(here, '.cache', 'change-schema.json') } } : {}),
+    ...((G.meta?.blueprint || G.lifecycle?.plan) && canChange ? { change: { instructions: core.floorplanChangeInstructions(G), schema: core.FLOORPLAN_CHANGE_SCHEMA, file: path.join(here, '.cache', 'change-schema.json') } } : {}),
   };
   if (ENGINES[engine]?.schemaFile) {
     fs.mkdirSync(path.join(here, '.cache'), { recursive: true });
@@ -432,9 +435,6 @@ function snapshot() {
   for (const old of fs.readdirSync(historyDir).sort().slice(0, -20)) fs.rmSync(path.join(historyDir, old), { recursive: true, force: true });
   return dir;
 }
-function restore(dir) {
-  for (const f of PLAN_FILES) { const from = path.join(dir, f), to = path.join(here, f); if (fs.existsSync(from)) fs.copyFileSync(from, to); else fs.rmSync(to, { force: true }); }
-}
 /** Runs one of the skill's scripts on this project; throws with its output when it fails. */
 function skillScript(name, ...args) {
   let dir;
@@ -455,31 +455,35 @@ function problems(text) {
   return out;
 }
 /** Checks and saves an updated plan. Returns { ok, undo } or { errors } with nothing changed. */
-function applyChange(data, request, lastTry) {
-  const parse = (name, text) => { try { const v = JSON.parse(String(text || '')); return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch { return null; } };
-  const plan = parse('plan', data.plan), arch = parse('architecture', data.architecture);
-  if (!plan || !arch) return { errors: [`${!plan ? 'plan' : 'architecture'} isn't a complete JSON object`] };
+async function projectCommands() {
+  const state = JSON.parse(fs.readFileSync(path.join(here, '.cache', 'skill.json'), 'utf8'));
+  return import(pathToFileURL(path.join(state.dir, 'scripts/lib/project-commands.mjs')).href);
+}
+async function clientExport(baseline) {
+  const state = JSON.parse(fs.readFileSync(path.join(here, '.cache', 'skill.json'), 'utf8'));
+  const module = await import(pathToFileURL(path.join(state.dir, 'scripts/lib/client-export.mjs')).href);
+  return module.exportClient(here, baseline);
+}
+async function applyChange(data, request, lastTry, expectedRevision) {
+  let plan, arch;
+  try { plan = JSON.parse(data.plan); arch = JSON.parse(data.architecture); }
+  catch { return { errors: ['plan and architecture must be complete JSON objects'] }; }
   const snap = snapshot();
-  const write = (f, v) => fs.writeFileSync(path.join(here, f), JSON.stringify(v, null, 2) + '\n');
   try {
-    write('plan.json', plan);
-    write('architecture.json', arch);
-    const items = (Array.isArray(data.changes) ? data.changes : []).filter((c) => c && typeof c.ref === 'string').map((c) => ({ ref: c.ref, change: c.change === 'changed' ? 'changed' : 'new', note: String(c.note || '') }));
-    // the Recent work panel shows plain text: the summary's first paragraph, without Markdown marks
+    const commands = await projectCommands();
+    const items = (Array.isArray(data.changes) ? data.changes : []).filter(c => c && typeof c.ref === 'string').map(c => ({ ref: c.ref, change: c.change === 'changed' ? 'changed' : 'new', note: String(c.note || '') }));
     const plain = String(data.summary || '').split(/\n\s*\n/)[0].replace(/\*\*|__|`/g, '').replace(/\s+/g, ' ').trim();
-    write('recent-work.json', { updatedAt: new Date().toISOString(), tasks: [{ title: String(data.title || 'Changed the plan').slice(0, 80), request, summary: plain, status: 'planned, not built', items }] });
-    skillScript('plan.mjs');
-    const check = skillScript('build.mjs', '--check');
-    const unassigned = +(/(\d+) unassigned/.exec(check)?.[1] || 0);
-    if (unassigned && !lastTry) throw Object.assign(new Error(''), { checks: true, list: [`${unassigned} planned file(s) fall under no node's paths in architecture.json (add or widen globs)`] });
-    skillScript('build.mjs', '--no-claude-md');
+    const result = await commands.applyDocuments(root, { expectedRevision, requireAssigned: !lastTry, documents: {
+      'plan.json': plan, 'architecture.json': arch,
+      'recent-work.json': { updatedAt: new Date().toISOString(), tasks: [{ title: String(data.title || 'Changed the plan').slice(0, 80), request, summary: plain, status: 'planned, not built', items }] },
+    } });
+    fs.writeFileSync(path.join(snap, 'revision.json'), JSON.stringify({ revision: result.revision }));
+    load();
     return { ok: true, undo: path.basename(snap) };
   } catch (e) {
-    restore(snap);
     fs.rmSync(snap, { recursive: true, force: true });
-    try { skillScript('plan.mjs'); } catch {}
-    if (!e.checks) throw e;
-    return { errors: e.list || problems(e.message).slice(0, 12).concat(problems(e.message).length ? [] : [e.message.trim().split('\n').pop()]) };
+    if (/conflict|ocupado/.test(e.message)) throw e;
+    return { errors: problems(e.message).length ? problems(e.message).slice(0, 12) : [e.message] };
   }
 }
 async function changePlan(res, send, body) {
@@ -489,6 +493,7 @@ async function changePlan(res, send, body) {
   changing = true;
   let session, errors = null;
   try {
+    const expectedRevision = (await projectCommands()).projectStatus(root).revision;
     for (let attempt = 0; attempt < 2; attempt++) {
       const question = errors
         ? `Your updated plan didn't pass the checks, so nothing was saved:\n${errors.map((e) => `- ${e}`).join('\n')}\n\nFix these and reply again with the complete files. The request was: ${request}`
@@ -496,7 +501,7 @@ async function changePlan(res, send, body) {
       const data = await runAgent(res, send, { question, session, mode: 'change' });
       session = data.session || session;
       send('progress', { text: 'Checking the updated plan' });
-      const r = applyChange(data, request, attempt === 1);
+      const r = await applyChange(data, request, attempt === 1, expectedRevision);
       if (r.ok) {
         console.log(`plan changed: ${data.title || request.slice(0, 60)}`);
         send('answer', { title: String(data.title || ''), summary: String(data.summary || ''), changes: (data.changes || []).length, followups: Array.isArray(data.followups) ? data.followups.map(String).slice(0, 3) : [], undo: r.undo });
@@ -511,21 +516,24 @@ async function changePlan(res, send, body) {
   } finally { changing = false; res.end(); }
 }
 /** Puts back the files a change replaced (the newest first), and redraws. */
-function undoChange() {
+async function undoChange() {
   const all = fs.existsSync(historyDir) ? fs.readdirSync(historyDir).sort() : [];
   if (!all.length) return { ok: false, error: 'Nothing to undo.' };
   const dir = path.join(historyDir, all[all.length - 1]);
-  restore(dir);
-  try { skillScript('plan.mjs'); skillScript('build.mjs', '--no-claude-md'); } catch (e) {
-    console.error(`✗ Undo couldn't redraw the plan: ${e.message || e}`);
-    return { ok: false, error: 'Couldn’t redraw the previous plan. The details are in the map server’s output.' };
-  }
-  fs.rmSync(dir, { recursive: true, force: true });
-  return { ok: true, left: all.length - 1 };
+  try {
+    const commands = await projectCommands();
+    const current = commands.projectStatus(root);
+    const revisionFile = path.join(dir, 'revision.json');
+    if (fs.existsSync(revisionFile) && JSON.parse(fs.readFileSync(revisionFile, 'utf8')).revision !== current.revision) throw new Error('O projeto mudou depois desta alteração. Revise antes de desfazer.');
+    const documents = Object.fromEntries(PLAN_FILES.map(f => [f, fs.existsSync(path.join(dir, f)) ? JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) : null]));
+    await commands.applyDocuments(root, { expectedRevision: current.revision, documents });
+    load(); fs.rmSync(dir, { recursive: true, force: true });
+    return { ok: true, left: all.length - 1 };
+  } catch (e) { return { ok: false, error: e.message }; }
 }
 
 // ---------- http ----------
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   // only this machine's own names: a website that points its domain at 127.0.0.1 (DNS rebinding) would
   // otherwise count as the same origin as the map, and could read its token from the page
   if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(String(req.headers.host || '').toLowerCase())) { res.writeHead(403); return res.end('unknown host'); }
@@ -535,6 +543,36 @@ const server = http.createServer((req, res) => {
     // EventSource can't send headers, so the events stream takes the token in the query string
     const given = req.headers['x-floorplan-token'] || (url.pathname === '/api/events' ? url.searchParams.get('token') : null);
     if (!sameOrigin || given !== token) { res.writeHead(403); return res.end(); }
+    if (url.pathname === '/api/project' && req.method === 'GET') {
+      try { const data = (await projectCommands()).projectStatus(root); res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(data)); }
+      catch (e) { res.writeHead(409, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ error: e.message })); }
+    }
+    if (url.pathname === '/api/project/answers' && req.method === 'POST') {
+      let raw = '', size = 0, tooLarge = false;
+      req.setEncoding('utf8');
+      req.on('data', d => { size += Buffer.byteLength(d); if (size > 1024 * 1024) tooLarge = true; else if (!tooLarge) raw += d; });
+      req.on('end', async () => {
+        try {
+          if (tooLarge) throw new Error('Respostas excedem o tamanho permitido.');
+          const body = JSON.parse(raw);
+          const result = await (await projectCommands()).saveAnswers(root, { expectedRevision: body.expectedRevision, answers: body.answers });
+          load(); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(result));
+        } catch (e) { res.writeHead(/conflict|ocupado/.test(e.message) ? 409 : 400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: e.message })); }
+      });
+      return;
+    }
+    if (url.pathname === '/api/project/baseline' && req.method === 'POST') {
+      let raw = '';
+      req.on('data', d => { raw += d; if (raw.length > 20000) req.destroy(); });
+      req.on('end', async () => {
+        try {
+          const body = JSON.parse(raw);
+          const result = await (await projectCommands()).createBaseline(root, { id: body.id, title: body.title, expectedRevision: body.expectedRevision });
+          load(); res.writeHead(201, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(result));
+        } catch (e) { res.writeHead(/conflict|ocupado/.test(e.message) ? 409 : 400, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: e.message })); }
+      });
+      return;
+    }
     if (req.method === 'GET' && url.pathname === '/api/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
       res.write('retry: 1000\n\n'); // reconnect quickly after a restart
@@ -573,11 +611,12 @@ const server = http.createServer((req, res) => {
       if (req.method === 'POST' || req.method === 'DELETE') {
         let raw = '';
         req.on('data', (d) => { raw += d; if (raw.length > 50000) req.destroy(); });
-        req.on('end', () => {
+        req.on('end', async () => {
           let body = {}; try { body = JSON.parse(raw); } catch {}
           let flows = readFlows().filter((x) => x.id !== body.id && x.id !== body.flow?.id);
           if (req.method === 'POST' && body.flow?.id && Array.isArray(body.flow.steps)) flows.push({ ...body.flow, createdAt: new Date().toISOString() });
-          fs.writeFileSync(flowsFile, JSON.stringify({ flows }, null, 2) + '\n');
+          try { const commands = await projectCommands(); await commands.applyDocuments(root, { expectedRevision: commands.projectStatus(root).revision, documents: { 'custom-flows.json': { flows } } }); load(); }
+          catch (e) { res.writeHead(409, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ error: e.message })); }
           res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ flows }));
         });
         return;
@@ -588,12 +627,13 @@ const server = http.createServer((req, res) => {
       if (req.method === 'POST' || req.method === 'DELETE') {
         let raw = '';
         req.on('data', (d) => { raw += d; if (raw.length > 100000) req.destroy(); });
-        req.on('end', () => {
+        req.on('end', async () => {
           let body = {}; try { body = JSON.parse(raw); } catch {}
           if (typeof body.id !== 'string') { res.writeHead(400); return res.end(); }
           const dismissed = readDismissed().filter((x) => x.id !== body.id);
           if (req.method === 'POST') dismissed.push(cleanDismissal(body));
-          fs.writeFileSync(dismissedFile, JSON.stringify({ dismissed }, null, 2) + '\n');
+          try { const commands = await projectCommands(); await commands.applyDocuments(root, { expectedRevision: commands.projectStatus(root).revision, documents: { 'health-dismissed.json': { dismissed } } }); load(); }
+          catch (e) { res.writeHead(409, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ error: e.message })); }
           res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ dismissed }));
         });
         return;
@@ -620,17 +660,17 @@ const server = http.createServer((req, res) => {
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/plan/undo') {
-      const r = changing ? { ok: false, error: 'A change is still being made.' } : undoChange();
+      const r = changing ? { ok: false, error: 'A change is still being made.' } : await undoChange();
       res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify(r));
     }
     if (req.method === 'POST' && url.pathname === '/api/cancel') { for (const c of running.values()) c.kill(); res.writeHead(204); return res.end(); }
     if (req.method === 'POST' && url.pathname === '/api/export') {
       let raw = '';
       req.on('data', (d) => { raw += d; if (raw.length > 500000) req.destroy(); });
-      req.on('end', () => {
+      req.on('end', async () => {
         let body = {}; try { body = JSON.parse(raw); } catch {}
         try {
-          const x = exportMap(Array.isArray(body.include) ? body.include.map(String) : EXPORT_DEFAULT, cleanFlows(body.flows));
+          const x = body.profile === 'client' ? await clientExport(body.baseline) : exportMap(Array.isArray(body.include) ? body.include.map(String) : EXPORT_DEFAULT, cleanFlows(body.flows));
           res.writeHead(200, { 'Content-Type': TYPES['.html'], 'Content-Disposition': `attachment; filename="${x.name}"`, 'Cache-Control': 'no-store' });
           res.end(x.html);
         } catch (e) {

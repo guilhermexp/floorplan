@@ -10,10 +10,10 @@ Cada tela centraliza propostas de interface e capturas da implementação. Ambas
 
 Botão Visuais abre catálogo pesquisável de telas, inclusive as ainda sem imagens. Uma tela abre seu canvas com referências visuais e componentes. Miniaturas carregam sob demanda; clique amplia; comparação permite selecionar proposta e captura. A adição manual usa o servidor local e preserva o histórico; agentes usam um comando de importação com os mesmos campos. Rebuild/refresh não sobrescrevem o manifesto. Exportação HTML pode incluir imagens embutidas.
 
-## Teste Uberdog
+## Teste em projeto local
 
-Usar as 86 telas do catálogo existente e copiar as quatro imagens aprovadas (T01, T04, T11, T19), preservando originais. Todas são propostas; não existe implementação comprovada na sessão. Não gerar 82 imagens nem construir o Uberdog nesta tarefa. Validar importação de captura e comparação em fixture de teste identificada, sem alegar app implementado. Exibir cobertura honesta no projeto real.
+Usar as telas do catálogo existente e copiar as imagens aprovadas, preservando originais. Todas são propostas; não existe implementação comprovada na sessão. Não gerar novas imagens nem construir o projeto de teste nesta tarefa. Validar importação de captura e comparação em fixture de teste identificada, sem alegar app implementado. Exibir cobertura honesta no projeto real.
 
 ## Validação
 
-Testes de manifesto, resolução de tela, segurança de arquivo, persistência após rebuild, importação autenticada e exportação. Smoke test no navegador com Uberdog (86 telas), ampliação, busca, canvas, estados sem captura e comparação em fixture. Suite existente para regressões.
+Testes de manifesto, resolução de tela, segurança de arquivo, persistência após rebuild, importação autenticada e exportação. Smoke test no navegador com o projeto de teste, ampliação, busca, canvas, estados sem captura e comparação em fixture. Suite existente para regressões.

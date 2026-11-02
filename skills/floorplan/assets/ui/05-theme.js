@@ -1,54 +1,63 @@
-// The Theme button: Auto (follows your device) -> Light -> Dark -> Auto. The choice is remembered on this
-// device. The theme itself is picked by a tiny script at the top of viewer.html, before anything is drawn,
-// so the page never flashes the wrong colours; this file only adds the button and keeps it in step.
+// Language and theme share one bottom settings popover; preferences keep their existing storage.
 (() => {
-  const SC = window.Floorplan;
-  const T = window.floorplanTheme;
-  if (!SC || !T) return;
-
-  const ICON = {
-    auto: '<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/>',
-    light: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
-    dark: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
-  };
-  const NAME = { auto: 'Auto (follows your device)', light: 'Light', dark: 'Dark' };
-  const WORD = { auto: 'Auto', light: 'Light', dark: 'Dark' };
-  const NEXT = { auto: 'light', light: 'dark', dark: 'auto' };
-
+  const T = window.floorplanTheme, I = window.FloorplanI18n;
+  if (!window.Floorplan || !T || !I) return;
   const style = document.createElement('style');
   style.textContent = `
-    /* a 44 px target; the round hover shape stays 36 px like the buttons beside it */
-    #theme-toggle { position: relative; flex: none; width: 44px; height: 44px; padding: 0; background: none; }
-    #theme-toggle::before { content: ""; position: absolute; inset: 4px; border-radius: 999px; transition: background .2s var(--ease); }
-    #theme-toggle:hover { background: none; }
-    #theme-toggle:hover::before { background: rgba(var(--ink), .07); }
-    #theme-toggle svg { position: relative; width: 18px; height: 18px; }
-    #theme-toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; }
-    .theme-status { position: fixed; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    @media (prefers-reduced-motion: reduce) { #theme-toggle, #theme-toggle::before { transition: none; } #theme-toggle:active { transform: none; } }`;
+    #floorplan-settings { position:fixed; left:16px; bottom:70px; z-index:26; }
+    #settings-toggle { width:44px; height:44px; display:grid; place-items:center; border:1px solid var(--hair-2); border-radius:50%; color:var(--text-2); cursor:pointer; }
+    #settings-toggle:hover,#settings-toggle[aria-expanded=true] { color:var(--text); background:var(--modal-bg); }
+    #settings-toggle svg { width:20px; height:20px; }
+    #settings-toggle:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+    #settings-popover { position:absolute; bottom:54px; left:0; width:260px; max-width:calc(100vw - 32px); max-height:calc(100dvh - 150px); overflow:auto; padding:18px; border:1px solid var(--hair-2); border-radius:18px; background:var(--modal-bg); color:var(--text); box-shadow:0 12px 40px #0003; }
+    #settings-popover[hidden] { display:none; }
+    #settings-popover h2 { font-size:15px; margin:0 0 16px; }
+    #settings-popover label { display:grid; gap:7px; font-size:13px; margin-top:12px; }
+    #settings-popover select { width:100%; min-height:44px; padding:8px 10px; border:1px solid var(--hair-2); border-radius:10px; background:var(--modal-bg); color:var(--text); font:inherit; }
+    #settings-popover select:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+    @media(max-width:1279px) { #floorplan-settings { left:16px; bottom:68px; } }
+    @media(max-width:700px) { #floorplan-settings { bottom:calc(88px + env(safe-area-inset-bottom)); } body:not(.no-panel) #floorplan-settings { bottom:calc(min(56vh,480px) + 20px); } body:not(.no-panel) #settings-popover { max-height:calc(100dvh - min(56vh,480px) - 96px); } }
+  `;
   document.head.appendChild(style);
-
-  // read out by screen readers when the theme changes
-  const status = document.createElement('span');
-  status.className = 'theme-status';
-  status.setAttribute('role', 'status');
-  document.body.appendChild(status);
-
-  const btn = SC.addHeaderButton({ id: 'theme-toggle', svg: ICON.auto, onClick: () => {
-    const next = NEXT[T.get()];
-    T.set(next);
-    status.textContent = `Theme is now ${next === 'auto' ? 'Auto, following your device' : WORD[next]}.`;
-  } });
-
-  const show = () => {
-    const c = T.get();
-    btn.querySelector('svg').innerHTML = ICON[c];
-    const text = `Theme: ${NAME[c]}. Press for ${WORD[NEXT[c]]}.`;
-    btn.title = text;
-    btn.setAttribute('aria-label', text);
+  const container = document.createElement('div');
+  container.id = 'floorplan-settings';
+  container.setAttribute('data-no-translate', '');
+  container.innerHTML = `<button id="settings-toggle" class="glass" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="settings-popover"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 3-.7 2.4-2 .9-2.3-.6-2 3.5 1.6 1.8v2l-1.6 1.8 2 3.5 2.3-.6 2 .9.7 2.4h5l.7-2.4 2-.9 2.3.6 2-3.5-1.6-1.8v-2l1.6-1.8-2-3.5-2.3.6-2-.9-.7-2.4z"/><circle cx="12" cy="12" r="3"/></svg></button>
+    <div id="settings-popover" role="dialog" aria-labelledby="settings-heading" hidden><h2 id="settings-heading"></h2>
+      <label for="settings-language"><span data-settings-language-label></span><select id="settings-language"><option value="pt-BR">Português</option><option value="en">English</option></select></label>
+      <label for="settings-theme"><span data-settings-theme-label></span><select id="settings-theme"><option value="auto"></option><option value="light"></option><option value="dark"></option></select></label>
+    </div>`;
+  document.body.appendChild(container);
+  const button = container.querySelector('#settings-toggle'), panel = container.querySelector('#settings-popover');
+  const language = container.querySelector('#settings-language'), theme = container.querySelector('#settings-theme');
+  function sync() {
+    const en = I.get() === 'en', title = en ? 'Settings' : 'Configurações';
+    button.title = title; button.setAttribute('aria-label', title);
+    container.querySelector('#settings-heading').textContent = title;
+    container.querySelector('[data-settings-language-label]').textContent = en ? 'Language' : 'Idioma';
+    container.querySelector('[data-settings-theme-label]').textContent = en ? 'Theme' : 'Tema';
+    const names = en ? ['Automatic (system)', 'Light', 'Dark'] : ['Automático (sistema)', 'Claro', 'Escuro'];
+    [...theme.options].forEach((option, i) => option.textContent = names[i]);
+    language.value = I.get(); theme.value = T.get();
+  }
+  function close(restoreFocus = false) {
+    panel.hidden = true; button.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) button.focus();
+  }
+  button.onclick = () => {
+    if (!panel.hidden) return close();
+    sync(); panel.hidden = false; button.setAttribute('aria-expanded', 'true'); language.focus();
   };
-  // Enter and Space press this button; they must not also run the page's own "open the selected box" key
-  btn.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') ev.stopPropagation(); });
-  window.addEventListener('floorplan-theme-change', show);
-  show();
+  language.onchange = () => I.set(language.value);
+  theme.onchange = () => T.set(theme.value);
+  container.addEventListener('keydown', event => {
+    // Native select navigation must not trigger canvas shortcuts.
+    event.stopPropagation();
+    if (event.key === 'Escape') { event.preventDefault(); close(true); }
+  });
+  container.addEventListener('focusout', event => { if (event.relatedTarget && !container.contains(event.relatedTarget)) close(); });
+  document.addEventListener('pointerdown', event => { if (!container.contains(event.target)) close(); });
+  window.addEventListener('floorplan-language-change', sync);
+  window.addEventListener('floorplan-theme-change', sync);
+  sync();
 })();

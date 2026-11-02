@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { technologyStackReport } from './lib/technology-stack.mjs';
+import { navigationReport } from './lib/navigation.mjs';
+import { questionViews } from './lib/questions.mjs';
+import { freshObservedScan } from './lib/native-observation.mjs';
 // floorplan builder: validate floorplan/architecture.json against the scan, assign every file to a
 // node, attach import/HTTP/external edges, and write floorplan/graph.json + floorplan/index.html.
 //
@@ -10,7 +14,11 @@ import { fileURLToPath } from 'node:url';
 import { compileGlob, parseArgs, fmtNum, mapDir, keepOutOfGit } from './lib/common.mjs';
 import { fallbackFileName, fallbackRouteName, routeKey } from './lib/names.mjs';
 import { buildHealth, withDismissed, dismissalFor } from './lib/health.mjs';
-import { buildPlanHealth } from './lib/blueprint.mjs';
+import { buildPlanHealth, planToScan } from './lib/blueprint.mjs';
+import { readProject, listBaselines, withProjectLock } from './lib/project.mjs';
+import { assessProject } from './lib/assessment.mjs';
+import { mergeProjectScans, stableScreens } from './lib/lifecycle.mjs';
+import { readRepowise } from './lib/repowise.mjs';
 import { buildScreens } from './lib/screens.mjs';
 import { buildVisuals } from './lib/visuals.mjs';
 import { writeClaudeMd } from './lib/claudemd.mjs';
@@ -28,15 +36,23 @@ const scanFile = path.resolve(args.scan || path.join(outDir, '.cache', 'scan.jso
 export const NODE_KINDS = ['ui', 'service', 'worker', 'library', 'feature', 'data', 'config', 'test', 'script', 'infra', 'external'];
 export const EDGE_KINDS = ['import', 'call', 'http', 'rpc', 'event', 'queue', 'data', 'config'];
 
+async function build() {
 const errors = [];
 const warnings = [];
 const err = (msg) => errors.push(msg);
 const warn = (msg) => warnings.push(msg);
 
-const fail = (msg) => { console.error(`✗ ${msg}`); process.exit(1); };
+const fail = (msg) => { throw new Error(`✗ ${msg}`); };
 if (!fs.existsSync(scanFile)) fail(`No scan at ${scanFile}. Run: node ${path.join(SKILL_DIR, 'scripts', 'scan.mjs')} "${root}"`);
 if (!fs.existsSync(archFile)) fail(`No architecture file at ${archFile}. Write it first (see references/schema.md).`);
-const scan = JSON.parse(fs.readFileSync(scanFile, 'utf8'));
+const sourceScan = JSON.parse(fs.readFileSync(scanFile, 'utf8'));
+const projectState = readProject(outDir);
+const plan = projectState.plan;
+const planned = plan ? planToScan(plan, root) : null;
+if (planned?.errors.length) fail(planned.errors.join('\n'));
+const observedFile = path.join(outDir, '.cache', 'observed.json');
+const observedScan = freshObservedScan(root, fs.existsSync(observedFile) ? JSON.parse(fs.readFileSync(observedFile, 'utf8')) : (!sourceScan.blueprint ? sourceScan : null));
+const scan = mergeProjectScans(planned?.scan, observedScan) || sourceScan;
 let arch;
 try { arch = JSON.parse(fs.readFileSync(archFile, 'utf8')); } catch (e) { fail(`architecture.json is not valid JSON: ${e.message}`); }
 
@@ -370,8 +386,8 @@ report.push(`DESCRIPTIONS  files ${describedFiles}/${included.length} · routes 
 if (noSummary.length) report.push(`  modules without a summary: ${noSummary.slice(0, 12).join(', ')}${noSummary.length > 12 ? '…' : ''}`);
 if (describedFiles < included.length || describedRoutes < routesIn.length || reviewCount) report.push(`  Run describe.mjs to get worksheets for the ${included.length - describedFiles} file(s) and ${routesIn.length - describedRoutes} route(s) still missing descriptions.`);
 
-if (errors.length) { console.log(report.join('\n')); console.log('\nFix the errors above and run build again.'); process.exit(1); }
-if (args.check) { console.log(report.join('\n')); process.exit(0); }
+if (errors.length) { throw new Error(report.join('\n') + '\nFix the errors above and run build again.'); }
+if (args.check) { console.log(report.join('\n')); return; }
 
 // ---------- write graph.json + index.html ----------
 const graph = {
@@ -396,6 +412,7 @@ const graph = {
     const d = fileDesc.get(f.path);
     return {
       p: f.path, n: owner.get(f.path), r: f.repo, l: f.lang || f.category, loc: f.loc,
+      ...(f.implementation ? { implementation: f.implementation } : {}),
       name: d?.name || f.name || fallbackFileName(f.path), d: d?.d || f.desc || f.doc || '', ...(d?.d || f.desc ? {} : { auto: true }),
       ...(f.doc ? { doc: f.doc } : {}),
       ...(f.tooLarge ? { tooLarge: true } : {}),
@@ -417,9 +434,20 @@ const graph = {
 // extension hooks, computed from the finished graph plus the raw scan
 // a blueprint has no code to check, so its Health is a design review of the plan (computed after screens)
 if (!scan.blueprint) try { graph.health = buildHealth({ graph, scan, arch, root }); } catch (e) { warn(`health check failed: ${e.message}`); graph.health = { issues: [] }; }
-try { graph.screens = buildScreens({ graph, scan, arch, root }); } catch (e) { warn(`screen detection failed: ${e.message}`); graph.screens = []; }
+try { graph.screens = stableScreens(plan, buildScreens({ graph, scan, arch, root }), graph); } catch (e) { fail(`screen detection failed: ${e.message}`); }
 try { graph.visuals = buildVisuals({ graph, outDir, warn }); } catch (e) { fail(`visuals.json: ${e.message}`); }
 if (scan.blueprint) try { graph.health = buildPlanHealth({ graph, scan }); } catch (e) { warn(`design review failed: ${e.message}`); graph.health = { issues: [] }; }
+const observation = readRepowise(outDir, root);
+const assessment = assessProject({ plan, observedScan, graph, observation });
+graph.navigation = navigationReport(plan, graph);
+graph.lifecycle = { technologyStack: technologyStackReport(plan), navigation: graph.navigation, revision: projectState.revision, plan, questions: questionViews(plan), assessment, baselines: listBaselines(args['history-dir'] || outDir), observation };
+const lifecycleFindings = [...graph.lifecycle.technologyStack.findings, ...graph.navigation.findings, ...(assessment.findings || []), ...(observation?.findings || []), ...(!scan.blueprint && planned?.scan ? buildPlanHealth({ graph, scan: planned.scan }).issues.filter(i => i.kind === 'question') : [])];
+if (lifecycleFindings.length) {
+  graph.health ||= { issues: [], summary: { high: 0, medium: 0, low: 0 } };
+  graph.health.issues.push(...lifecycleFindings);
+  graph.health.summary = { high: 0, medium: 0, low: 0 };
+  for (const issue of graph.health.issues) if (issue.severity in graph.health.summary) graph.health.summary[issue.severity]++;
+}
 // issues people marked "not a problem" on the map (saved by serve.mjs) stay listed, set apart, and leave the counts
 const dismissedFile = path.join(outDir, 'health-dismissed.json');
 if (graph.health?.issues && fs.existsSync(dismissedFile)) {
@@ -427,7 +455,8 @@ if (graph.health?.issues && fs.existsSync(dismissedFile)) {
 }
 fs.mkdirSync(outDir, { recursive: true });
 const trackedWarning = keepOutOfGit(outDir);
-fs.writeFileSync(path.join(outDir, 'graph.json'), JSON.stringify(graph, null, 0));
+function publish(name, content) { const file = path.join(outDir, name), temp = file + `.${process.pid}.tmp`; fs.writeFileSync(temp, content); fs.renameSync(temp, file); }
+publish('graph.json', JSON.stringify(graph, null, 0));
 
 const template = fs.readFileSync(path.join(SKILL_DIR, 'assets', 'viewer.html'), 'utf8');
 // The layout engine (elkjs 0.9.3) and fonts (Inter, JetBrains Mono) are bundled in assets/vendor/ and
@@ -453,11 +482,16 @@ const page = (g) => template
 const uiDir = path.join(SKILL_DIR, 'assets', 'ui');
 const uiScripts = fs.existsSync(uiDir) ? fs.readdirSync(uiDir).filter((n) => n.endsWith('.js')).sort().map((n) => `<script>/* ui/${n} */\n${fs.readFileSync(path.join(uiDir, n), 'utf8').replace(/<\/script/gi, '<\\/script')}</script>`).join('\n') : '';
 const html = page(graph);
-fs.writeFileSync(path.join(outDir, 'index.html'), html);
+publish('index.html', html);
 // --artifact: a copy to publish to the Claude app, without this machine's absolute path (editor links)
 // (and without the reasons on dismissed health issues, which are notes to self)
 const sharedHealth = graph.health?.dismissed ? { ...graph.health, dismissed: graph.health.dismissed.map(({ reason, ...d }) => d) } : graph.health;
-if (args.artifact) fs.writeFileSync(path.join(outDir, 'artifact.html'), page({ ...graph, ...(sharedHealth ? { health: sharedHealth } : {}), meta: { ...graph.meta, root: null, agent: 'claude' } }));
+if (args.artifact) {
+  const { lifecycle, ...publicGraph } = graph;
+  const meta = { ...graph.meta, root: null, agent: 'claude', repos: (graph.meta.repos || []).map(({ remote, ...repo }) => repo) };
+  if (meta.blueprint) { const { source, ...blueprint } = meta.blueprint; meta.blueprint = blueprint; }
+  fs.writeFileSync(path.join(outDir, 'artifact.html'), page({ ...publicGraph, ...(sharedHealth ? { health: sharedHealth } : {}), meta }));
+}
 // Self-contained helpers next to the map: ask questions through the Claude Code CLI or Codex (serve.mjs)
 // and the graph lookups it hands to them (query.mjs). They need only Node, not this skill.
 fs.writeFileSync(path.join(outDir, 'query.mjs'), `${graphQuery}
@@ -491,3 +525,13 @@ report.push('');
 report.push(`✓ wrote ${path.relative(root, path.join(outDir, 'index.html'))} (${fmtNum(Math.round(html.length / 1024))} KB) and graph.json`);
 if (pct > 10) report.push(`  Unassigned is ${pct.toFixed(0)}%: add nodes or globs for the directories above (or "ignore" them) and rebuild.`);
 console.log(report.join('\n'));
+
+}
+// A staged build owns its own lock. A transaction may lend its live lock only to its direct child.
+try {
+if (args['lock-owner']) {
+  const owner = JSON.parse(fs.readFileSync(path.join(outDir, '.project.lock'), 'utf8'));
+  if (owner.pid !== process.ppid || String(owner.pid) !== String(args['lock-owner'])) throw new Error('Invalid project lock owner');
+  await build();
+} else await withProjectLock(outDir, build, { allowVisualWriter: true });
+} catch (error) { console.error(error.message); process.exitCode = 1; }

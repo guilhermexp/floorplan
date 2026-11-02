@@ -101,6 +101,6 @@ node floorplan/serve.mjs --export shared-map.html --include flows,notes,visuals
 
 This embeds the selected visual catalog's image bytes into the HTML. The copy can be moved to another folder or machine without the image files. Source URL, capture date and other supplied metadata remain visible. Without `visuals`, the export omits the image catalog. `build.mjs --artifact` keeps relative image references just like the local map: carry its sibling `visuals/` directory with it, or use the export above when you need one portable HTML file. Large catalogs make larger exported files; normal local viewing references images separately and loads previews as needed.
 
-## Uberdog example
+## Teste em projeto local
 
-The accompanying Uberdog map contains 86 planned screens/states and 89 proposals, including four previously approved proposals (T01, T04, T11 and T19). All screens have an image; three screens also retain a revised version. It has zero real implementation captures. This is a test of organizing an actual planning project, not evidence that Uberdog has been implemented.
+A galeria foi validada com um catálogo de planejamento real, incluindo várias propostas por tela e versões previamente aprovadas. Os documentos, nomes, contagens e imagens desse projeto permanecem fora do repositório do plugin. Uma proposta visual não é evidência de implementação; capturas reais têm identificação e metadados próprios.

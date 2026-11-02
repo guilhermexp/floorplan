@@ -63,7 +63,10 @@ test('Screens show what each planned page relies on, down to Stripe', () => {
 });
 
 test('Health is a design review of the plan', () => {
-  const issues = graph.health.issues;
+  const stackIssue = graph.health.issues.find(i => i.id === 'technology-stack:coverage');
+  assert.ok(stackIssue);
+  assert.match(stackIssue.change, /technologyStack/);
+  const issues = graph.health.issues.filter(i => !i.id.startsWith('technology-stack:'));
   const titles = issues.map((i) => `${i.severity} ${i.title}`);
   assert.deepEqual(titles, [
     'medium Anyone could change data through one planned endpoint',
@@ -88,7 +91,7 @@ test('Health is a design review of the plan', () => {
     'Nothing calls DELETE /api/walkers/:id. Add the screen or service that should use it, or remove it if not needed. ',
     'api/src/lib/geo.ts isn’t connected to anything. Connect it to what should use it, or remove it. ',
   ]);
-  assert.match(buildOut, /DESIGN REVIEW {2}0 important · 3 worth fixing · 2 minor/);
+  assert.match(buildOut, /DESIGN REVIEW {2}0 important · 4 worth fixing · 2 minor/);
 });
 
 test('the map page marks it as a blueprint, and Ask knows there is no code to read', () => {
@@ -153,7 +156,7 @@ test('build.mjs catches a service that is not a node', () => {
   } finally { cleanup(r); }
 });
 
-test('refresh redraws a blueprint from plan.json, and --from-code maps the real code instead', () => {
+test('refresh redraws the plan and --from-code retains planned scope alongside observed code', () => {
   const r = withPlan(() => {});
   try {
     run('plan.mjs', r);
@@ -167,12 +170,14 @@ test('refresh redraws a blueprint from plan.json, and --from-code maps the real 
 
     fs.mkdirSync(path.join(r, 'api', 'src'), { recursive: true });
     fs.writeFileSync(path.join(r, 'api', 'src', 'server.ts'), `import express from 'express';\nconst app = express();\napp.get('/api/health', (req, res) => res.send('ok'));\napp.listen(3000);\n`);
-    // the blueprint's flows point at files that aren't written yet, so the map of the code gets its own
-    writeJson(path.join(r, 'floorplan', 'architecture.json'), { project: { name: 'Pawprint', summary: 'Being built.' }, nodes: [{ id: 'api', label: 'Main server', kind: 'service', summary: 'The server.', paths: ['api/**'] }] });
+    // Planned architecture and flows remain meaningful while implementation is partial.
     run('refresh.mjs', r, '--from-code', '--no-claude-md');
     const g = readGraph(r);
     assert.equal(g.meta.blueprint, undefined);
-    assert.deepEqual(routeKeys(g), ['GET /api/health']);
+    assert.ok(routeKeys(g).includes('GET /api/health'));
+    assert.ok(routeKeys(g).includes('POST /api/bookings'), 'planned endpoints remain visible');
+    assert.ok(g.files.some(f => f.implementation === 'planned'));
+    assert.equal(g.lifecycle.plan.source, 'docs/prd.md');
     assert.ok(fs.existsSync(path.join(r, 'floorplan', 'plan.json')), 'the plan is kept');
   } finally { cleanup(r); }
 });

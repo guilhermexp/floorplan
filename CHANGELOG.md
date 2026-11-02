@@ -10,6 +10,28 @@
 
 # Changelog
 
+- Initialize a private planning workspace with `project.mjs <root> init` before saving sources, so first publication works without a manual cache workaround.
+
+## 0.8.0 (2026-11-02)
+
+- Package the Guilhermexp fork as `floorplan@floorplan-guilhermexp`, with installation and update instructions for Codex and preserved upstream attribution.
+- Add authored navigation journeys with conditions, alternatives and recovery, connected to the visual gallery and offline client presentations.
+- Add the project technology stack, decision links, pending choices and coverage review.
+- Collect multiple-choice decisions and additional text in the project UI without fabricating user answers.
+- Enlarge mockup previews and unify language and theme in a bottom settings popover; Portuguese remains the default.
+- Register gallery/question navigation correctly while preserving the immutable viewer API.
+- Keep project documents, visuals, answers, baselines and analyzer data outside plugin Git.
+
+## 0.7.0 (2026-11-01)
+
+- Add guided concept-to-implementation planning with requirements, criteria, decisions and persistent screen identities.
+- Keep intent and observed code together; invalidate verification after content or criterion changes and show analysis limits.
+- Add private recoverable revisions, immutable local baselines and offline client presentations with device galleries.
+- Share validated mutations between CLI and map UI; reject stale proposals and preserve visual associations during migration.
+- Add optional Repowise context and a serial foreground watcher, with incomplete/stale results visible and no global hooks or automatic installs.
+- Preserve the complete Git exclusion of real project documents, images, histories and analyzer indexes.
+
+
 ## 0.6.1 (2026-11-01)
 
 - **Fewer false alarms in Health** (thanks to the user who reported these):

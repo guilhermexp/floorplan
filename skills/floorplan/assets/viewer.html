@@ -2054,7 +2054,7 @@ function cancelAsk() {
 // as recent work. What changed is kept across that reload in sessionStorage, with an Undo.
 const CHANGE_KEY = 'floorplan-change';
 // a server whose engine can't be held to the plan's format says change: false
-const canChange = () => PLAN && askState.engine === 'cli' && window.FLOORPLAN_SERVER?.change !== false;
+const canChange = () => (PLAN || !!G.lifecycle?.plan) && askState.engine === 'cli' && window.FLOORPLAN_SERVER?.change !== false;
 function setAskMode(m) {
   askState.mode = canChange() && m === 'change' ? 'change' : 'ask';
   $('#ask-mode')?.querySelectorAll('button').forEach((b) => { b.classList.toggle('on', b.dataset.m === askState.mode); b.setAttribute('aria-pressed', String(b.dataset.m === askState.mode)); });
@@ -2352,11 +2352,16 @@ function playFlow({ title = 'Tour', description = '', steps = [], inPlace = fals
   state.flow = { f: { id: 'tmp-' + Date.now(), title, description, steps: st }, i: 0, inPlace };
   flowStep();
 }
-const ext = { sections: { overview: [], item: [], board: [] }, listeners: {} };
+const ext = { sections: { overview: [], item: [], board: [] }, listeners: {}, actions: {} };
 const custom = { panel: null };
 function emit(event, data) { for (const fn of ext.listeners[event] || []) { try { fn(data); } catch (e) { console.error('floorplan extension', e); } } }
 window.Floorplan = Object.freeze({
   version: 1,
+  // Extensions register these after the immutable viewer API is published.
+  get openQuestions() { return ext.actions.openQuestions; },
+  set openQuestions(fn) { if (typeof fn === 'function') ext.actions.openQuestions = fn; },
+  get openVisuals() { return ext.actions.openVisuals; },
+  set openVisuals(fn) { if (typeof fn === 'function') ext.actions.openVisuals = fn; },
   graph: G, query: Q, state, agent: AGENT, exported: EXPORTED,
   // model helpers
   info, chain, children: (id) => visibleKids(id), parentOf: (id) => parentOf.get(id), exists: itemExists, visualSrc,
@@ -2406,7 +2411,7 @@ const init = readHash();
 state.container = init.v; state.selected = init.s;
 if (init.s && isPhone()) { document.body.classList.remove('no-panel'); $('#btn-panel').setAttribute('aria-expanded', 'true'); } // a shared link to a box opens its details
 const fontsReady = document.fonts?.ready ? Promise.race([document.fonts.ready, new Promise((ok) => setTimeout(ok, 1500))]) : Promise.resolve();
-fontsReady.then(() => render({ after: () => { renderPanel(); emit('ready', {}); if (PLAN && window.FLOORPLAN_SERVER) showChangeResult(); } }));
+fontsReady.then(() => render({ after: () => { renderPanel(); emit('ready', {}); if ((PLAN || G.lifecycle?.plan) && window.FLOORPLAN_SERVER) showChangeResult(); } }));
 })();
 </script>
 <!--__UI_EXTENSIONS__-->

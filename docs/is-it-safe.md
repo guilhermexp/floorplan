@@ -5,10 +5,10 @@ Plugins for Claude Code and Codex can run code on your computer, so it's worth a
 ## What Floorplan never does
 
 - **No hooks.** Hooks run code automatically on events in every session, which makes them a common hiding place. Floorplan has none.
-- **No MCP servers.** Floorplan has none, so it never starts a server that downloads its newest version with `npx`.
+- **No installed MCP configuration.** The optional Repowise adapter starts the already-installed local `repowise mcp` executable over stdio for a bounded read, then stops it. It never installs an MCP server, uses `npx`, or edits your global agent configuration.
 - **No dependencies, no install scripts.** Nothing comes from npm, at install time or ever. Its `package.json` exists only to run the tests.
-- **Never downloads anything, and never runs code from the internet.** No `eval`, no loading code at run time, no encoded payloads.
-- **Never changes your code.** It writes only its own `floorplan/` folder and, in Claude Code and only if you say yes, a marked section of `CLAUDE.local.md`. See [What's in your project](project-files.md).
+- **Never downloads executable code.** No `eval` or remote module loading. The local server and generated query helper load named modules from this installed skill, using the local `.cache/skill.json` pointer written by the build. Recovery journals encode local snapshots as data, not executable payloads.
+- **Never changes your application code.** It writes its private `floorplan/` folder; an explicitly used Repowise integration also maintains that tool's private `.repowise/` index. Claude Code can optionally maintain a marked section of `CLAUDE.local.md`. Explicit export writes to your selected destination. See [What's in your project](project-files.md).
 - **No analytics or tracking.**
 
 ## Everything it does
@@ -30,13 +30,20 @@ Asking questions on the map runs Claude Code or Codex, which talk to Anthropic o
 | `where` (Windows) or `which` | starting the map's server | Finding the Claude Code or Codex CLI |
 | `claude` or `codex` | when you ask a question on the map | Answering it, read-only: `claude -p` limited to reading files and Floorplan's lookup script, or `codex exec --sandbox read-only` |
 | `node` | throughout | Running Floorplan's own scripts |
+| `repowise` | only when the optional analyzer is requested | Index-only update and temporary read-only MCP context queries; foreground watch is explicitly started and can be stopped |
 | `cmd /c start`, `open` or `xdg-open` | opening the map | Opening the map's local address in your browser |
 
 Each is started directly with its arguments, never as a command line for a shell to interpret. The one shell is Windows' `cmd /c start`, given only the map's own local address.
 
 ### What runs without asking
 
-In Claude Code, while the skill is in use, it pre-approves one kind of command: `node` running one of its own scripts, each named exactly (`scripts/build.mjs`, `describe.mjs`, `open.mjs`, `plan.mjs`, `recent.mjs`, `refresh.mjs`, `scan.mjs`, `status.mjs` and `visuals.mjs`). That list is fixed by the tests below. Anything else Claude does asks according to your permission settings, as usual. Codex asks according to your approval settings.
+In Claude Code, while the skill is in use, it pre-approves `node` running its named scripts: `build.mjs`, `describe.mjs`, `open.mjs`, `plan.mjs`, `recent.mjs`, `refresh.mjs`, `scan.mjs`, `status.mjs`, `visuals.mjs`, `project.mjs` and `observe.mjs`. The latter two add private local revisions/baselines and the optional analyzer. This list and the allowed subprocess/module-loading sites are checked by the tests. Host permission settings still apply.
+
+### Private planning history
+
+Project documents, visuals, revisions, baselines and indexes remain ignored by Git. Only plugin code and synthetic fixtures belong in the plugin repository. Applying a proposal checks the source revision, validates/builds in a staging directory, and uses a recoverable local publication journal. A client export is an explicit allowlisted presentation of a frozen baseline, not the full internal project payload. Neither saving a version nor producing an export sends it to a client or records their approval.
+
+Repowise is a separate installed program with its own configuration and license. Index-only refresh avoids automatic documentation generation; the Floorplan adapter does not configure a model or change credentials. A missing or incompatible provider is reported, and incomplete results are not treated as a clean analysis. See [Repowise integration](repowise.md).
 
 ### Local image additions
 
@@ -98,3 +105,5 @@ It prints either that all files are identical, or which ones changed, are extra 
 ## Found something?
 
 Please report it privately, as described in the [security policy](../SECURITY.md).
+
+A conferência de atualidade nativa usa `git ls-files` quando há repositório e leitura local limitada de arquivos de fonte; não depende do Repowise. Exportações técnicas e artifacts omitem o estado interno `lifecycle` e o caminho do documento de origem. Para apresentações de escopo, use a exportação específica de cliente, baseada em uma versão local congelada.

@@ -184,3 +184,10 @@ An engine must be read-only in a way its CLI enforces, not only because the prom
 - Thank contributors, and credit them in the changelog and release notes.
 - Close an issue with a comment that names the release containing the fix.
 - Security reports go through [SECURITY.md](../SECURITY.md), privately. Don't discuss them in public issues until a fix is released.
+
+
+## Lifecycle fork
+
+The planning contract is `plan@2`; `plan@1` remains readable and `project.mjs migrate` preserves its technical intent and visual associations. `project.mjs` and the server share the project command layer. Authored state, private revision history and baselines are owned by `lib/project.mjs`; derived assessment never rewrites requirements. A build can borrow only the verified lock of its direct parent transaction.
+
+Add behavioral tests for migration, concurrent/stale writes, interrupted publication, criterion/code evidence invalidation and frozen client exports. Optional analyzer tests use a subprocess fixture for failures and a separately installed Repowise for a real compatibility proof. Do not add actual client files or screenshots to test fixtures. Changes to subprocesses, dynamic local imports or network sites must update `tests/supply-chain.test.mjs` and `docs/is-it-safe.md` together. Regenerate `CHECKSUMS.txt` after changing shipped files.
