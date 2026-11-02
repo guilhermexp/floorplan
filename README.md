@@ -1,4 +1,4 @@
-> **Local customization — screen visuals.** This working copy adds proposals and real captures per screen, canvas image cards, comparison, manual/agent import and portable export. See [the visual workflow](docs/visuals.md). It has not been published upstream.
+> **Floorplan — Guilhermexp 0.8.0.** Nosso fork para planejar projetos, stack, arquitetura, jornadas e decisões, com propostas visuais e capturas reais. [Instalar no Codex](docs/codex.md).
 
 <div align="center">
 
@@ -19,8 +19,8 @@ Claude or Codex reads your codebase and draws an interactive map of it. Every pa
 
 [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-D97757?style=flat-square)](https://code.claude.com/docs/en/overview)
 [![Codex plugin](https://img.shields.io/badge/Codex-plugin-111?style=flat-square)](docs/codex.md)
-[![Tests](https://img.shields.io/github/actions/workflow/status/haydenschmitty/floorplan/test.yml?branch=main&style=flat-square&label=tests)](https://github.com/haydenschmitty/floorplan/actions/workflows/test.yml)
-[![Version](https://img.shields.io/badge/version-0.7.0-111?style=flat-square)](CHANGELOG.md)
+[![Tests](https://img.shields.io/github/actions/workflow/status/guilhermexp/floorplan/test.yml?branch=main&style=flat-square&label=tests)](https://github.com/guilhermexp/floorplan/actions/workflows/test.yml)
+[![Version](https://img.shields.io/badge/version-0.8.0-111?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111?style=flat-square)](LICENSE)
 [![Node 18+](https://img.shields.io/badge/node-%E2%89%A518-111?style=flat-square)](https://nodejs.org)
 [![Zero dependencies](https://img.shields.io/badge/dependencies-0-111?style=flat-square)](#how-it-works)
@@ -174,8 +174,8 @@ You need [Node.js 18+](https://nodejs.org) and either Claude Code or Codex. Floo
 In the desktop app's Code tab or the CLI:
 
 ```bash
-claude plugin marketplace add haydenschmitty/floorplan
-claude plugin install floorplan@floorplan
+claude plugin marketplace add guilhermexp/floorplan
+claude plugin install floorplan@floorplan-guilhermexp
 ```
 
 Start a new session and it's ready. Installing the Claude Code CLI is recommended even if you use the desktop app, because it lets the map's Ask bar read your real code. More in [Getting started](docs/getting-started.md).
@@ -185,14 +185,14 @@ Start a new session and it's ready. Installing the Claude Code CLI is recommende
 Signed in with ChatGPT. No terminal needed:
 
 1. In the Codex app, open **Plugins** and choose **Add a marketplace**.
-2. For **Source**, enter `haydenschmitty/floorplan` and click **Add marketplace**.
-3. Find **Floorplan** and click **+** to install it.
+2. For **Source**, enter `guilhermexp/floorplan` and click **Add marketplace**.
+3. Find **Floorplan — Guilhermexp** and click **+** to install it.
 
 Or, from a terminal:
 
 ```bash
-codex plugin marketplace add haydenschmitty/floorplan
-codex plugin add floorplan@floorplan
+codex plugin marketplace add guilhermexp/floorplan
+codex plugin add floorplan@floorplan-guilhermexp
 ```
 
 Start a new chat and ask for a floorplan, or type `$floorplan`. The map's Ask bar runs on your own Codex sign-in, with no API key. More in [Floorplan in Codex](docs/codex.md).

@@ -10,6 +10,16 @@
 
 # Changelog
 
+## 0.8.0 (2026-11-02)
+
+- Package the Guilhermexp fork as `floorplan@floorplan-guilhermexp`, with installation and update instructions for Codex and preserved upstream attribution.
+- Add authored navigation journeys with conditions, alternatives and recovery, connected to the visual gallery and offline client presentations.
+- Add the project technology stack, decision links, pending choices and coverage review.
+- Collect multiple-choice decisions and additional text in the project UI without fabricating user answers.
+- Enlarge mockup previews and unify language and theme in a bottom settings popover; Portuguese remains the default.
+- Register gallery/question navigation correctly while preserving the immutable viewer API.
+- Keep project documents, visuals, answers, baselines and analyzer data outside plugin Git.
+
 ## 0.7.0 (2026-11-01)
 
 - Add guided concept-to-implementation planning with requirements, criteria, decisions and persistent screen identities.
