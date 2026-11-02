@@ -46,3 +46,17 @@ test('stack reaches agent status, review, UI and frozen export without copying p
     assert.equal(exportClient(path.join(root,'floorplan'),'stack-v1').html,html);
   } finally {cleanup(root);}
 });
+test('the actual frozen viewer API accepts late question and gallery registration', () => {
+  const viewer=fs.readFileSync(new URL('../skills/floorplan/assets/viewer.html',import.meta.url),'utf8');
+  const start=viewer.indexOf('window.Floorplan = Object.freeze({');
+  const apiSource=viewer.slice(start,viewer.indexOf('\ntechnicalFlag =',start));
+  // Other viewer capabilities are inert here; execute the actual API declaration,
+  // including its freeze, rather than a mutable fake extension object.
+  const target={window:{},Object,ext:{actions:{}}};
+  const scope=new Proxy(target,{has:()=>true,get:(o,k)=>k===Symbol.unscopables?undefined:(k in o?o[k]:()=>{})});
+  vm.runInNewContext(`with (scope) { ${apiSource} }`,{scope});
+  const api=target.window.Floorplan;assert.equal(Object.isFrozen(api),true);
+  let question,journey;api.openQuestions=id=>question=id;api.openVisuals=id=>journey=id;
+  api.openQuestions('Q13');api.openVisuals('booking');assert.equal(question,'Q13');assert.equal(journey,'booking');
+  api.openQuestions=null;api.openQuestions('Q08');assert.equal(question,'Q08');
+});

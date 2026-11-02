@@ -104,7 +104,7 @@
             ${item.version ? `<p>${text('Versão / critério', 'Version / criterion')}: ${h(item.version)}</p>` : ''}
             ${(item.decisions || []).map(id => `<p class="project-muted">${text('Decisão', 'Decision')}: ${h(plan.decisions?.find(d => d.id === id)?.title || id)}</p>`).join('')}
             ${(item.questions || []).map(id => `<p class="project-muted">${text('Questão associada', 'Related question')}: ${h(plan.questions?.find(q => q.id === id)?.question || id)}</p>`).join('')}
-            ${item.questions?.length ? `<button class="btn soft" data-stack-questions>${text('Abrir perguntas', 'Open questions')}</button>` : ''}</article>`).join('') : `<p class="project-muted">${text('Definir tecnologia ou registrar por que esta categoria não se aplica ao projeto.', 'Choose technologies or explain why this category does not apply to the project.')}</p>`}</details>`;
+            ${item.questions?.length ? `<button class="btn soft" data-stack-questions="${h(item.questions[0])}">${text('Abrir perguntas', 'Open questions')}</button>` : ''}</article>`).join('') : `<p class="project-muted">${text('Definir tecnologia ou registrar por que esta categoria não se aplica ao projeto.', 'Choose technologies or explain why this category does not apply to the project.')}</p>`}</details>`;
       }).join('')}</section>`;
   }
 
@@ -208,8 +208,8 @@
     });
     modal.el.querySelectorAll('[data-project-journey]').forEach(b=>b.onclick=()=>{modal.close();SC.openVisuals?.(b.dataset.projectJourney);});
     const questionsButton = modal.el.querySelector('[data-project-questions]');
-    if (questionsButton) questionsButton.onclick = () => { modal.close(); SC.openQuestions?.(); };
-    modal.el.querySelectorAll('[data-stack-questions]').forEach(b => b.onclick = () => { modal.close(); SC.openQuestions?.(); });
+    if (questionsButton) questionsButton.onclick = () => SC.openQuestions?.();
+    modal.el.querySelectorAll('[data-stack-questions]').forEach(b => b.onclick = () => SC.openQuestions?.(b.dataset.stackQuestions));
     modal.el.querySelectorAll('[data-project-export]').forEach(button => button.onclick = () => exportBaseline(Number(button.dataset.projectExport), modal));
   }
 

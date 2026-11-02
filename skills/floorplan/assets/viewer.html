@@ -2352,11 +2352,16 @@ function playFlow({ title = 'Tour', description = '', steps = [], inPlace = fals
   state.flow = { f: { id: 'tmp-' + Date.now(), title, description, steps: st }, i: 0, inPlace };
   flowStep();
 }
-const ext = { sections: { overview: [], item: [], board: [] }, listeners: {} };
+const ext = { sections: { overview: [], item: [], board: [] }, listeners: {}, actions: {} };
 const custom = { panel: null };
 function emit(event, data) { for (const fn of ext.listeners[event] || []) { try { fn(data); } catch (e) { console.error('floorplan extension', e); } } }
 window.Floorplan = Object.freeze({
   version: 1,
+  // Extensions register these after the immutable viewer API is published.
+  get openQuestions() { return ext.actions.openQuestions; },
+  set openQuestions(fn) { if (typeof fn === 'function') ext.actions.openQuestions = fn; },
+  get openVisuals() { return ext.actions.openVisuals; },
+  set openVisuals(fn) { if (typeof fn === 'function') ext.actions.openVisuals = fn; },
   graph: G, query: Q, state, agent: AGENT, exported: EXPORTED,
   // model helpers
   info, chain, children: (id) => visibleKids(id), parentOf: (id) => parentOf.get(id), exists: itemExists, visualSrc,
