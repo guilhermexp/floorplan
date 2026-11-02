@@ -82,6 +82,8 @@ Campos desconhecidos em v2 são erros de validação. Não invente propriedades 
 Todos os comandos abaixo usam `<skill>` como a pasta que contém esta skill e `<root>` como a pasta do projeto, nunca a do plugin:
 
 ```sh
+# Inicialize antes de copiar fontes ou preparar a primeira alteração em floorplan/.
+node <skill>/scripts/project.mjs <root> init
 node <skill>/scripts/project.mjs <root> status
 node <skill>/scripts/project.mjs <root> validate
 node <skill>/scripts/project.mjs <root> apply --input <alteracao.json> --revision <revisao-atual>

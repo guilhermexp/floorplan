@@ -10,6 +10,8 @@
 
 # Changelog
 
+- Initialize a private planning workspace with `project.mjs <root> init` before saving sources, so first publication works without a manual cache workaround.
+
 ## 0.8.0 (2026-11-02)
 
 - Package the Guilhermexp fork as `floorplan@floorplan-guilhermexp`, with installation and update instructions for Codex and preserved upstream attribution.

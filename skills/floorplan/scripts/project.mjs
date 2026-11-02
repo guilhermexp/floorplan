@@ -2,7 +2,7 @@
 // Private project operations. All generated data remains in the project's ignored floorplan/ folder.
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseArgs, mapDir } from './lib/common.mjs';
+import { parseArgs, mapDir, keepOutOfGit } from './lib/common.mjs';
 import { projectStatus, applyDocuments, createBaseline, validateProject, migrateProject } from './lib/project-commands.mjs';
 
 const args = parseArgs(process.argv.slice(2));
@@ -10,7 +10,13 @@ const root = path.resolve(args._[0] || '.');
 const command = args._[1] || 'status';
 try {
   let result;
-  if (command === 'status') result = projectStatus(root);
+  if (command === 'init') {
+    const dir = mapDir(root);
+    const warning = keepOutOfGit(dir);
+    fs.mkdirSync(path.join(dir, '.cache'), { recursive: true });
+    result = { directory: dir, ...projectStatus(root), ...(warning ? { warning } : {}) };
+  }
+  else if (command === 'status') result = projectStatus(root);
   else if (command === 'migrate') result = await migrateProject(root, { expectedRevision: args.revision });
   else if (command === 'validate') { result = validateProject(root); if (!result.valid) process.exitCode = 1; }
   else if (command === 'apply') {
@@ -26,6 +32,6 @@ try {
     const destination = path.resolve(args.output);
     fs.writeFileSync(destination, output.html);
     result = { file: destination, baseline: args.baseline };
-  } else throw new Error('Comandos: status | validate | migrate | apply | baseline | export');
+  } else throw new Error('Comandos: init | status | validate | migrate | apply | baseline | export');
   console.log(JSON.stringify(result, null, 2));
 } catch (e) { console.error(JSON.stringify({ error: e.message })); process.exitCode = 1; }

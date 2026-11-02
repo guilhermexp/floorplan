@@ -16,7 +16,7 @@ Pergunte sobre decisões materiais que não podem ser inferidas. Prossiga com es
 
 Use `concept`, `scope`, `architecture` ou `implementation` conforme o entendimento real. Não crie arquivos de código fictícios para cumprir o formato inicial. Não registre a ideia do agente como requisito do cliente.
 
-Todos os dados de trabalho e fontes copiadas ficam em `floorplan/` no projeto correspondente, fora do Git. Antes de copiar a primeira fonte, garanta que `floorplan/.gitignore` contenha `*`; os comandos do projeto mantêm essa proteção. O repositório do plugin recebe somente o produto, seus exemplos sintéticos e testes. Use o [contrato do blueprint](blueprint.md) para aplicar alterações e criar versões locais.
+Todos os dados de trabalho e fontes copiadas ficam em `floorplan/` no projeto correspondente, fora do Git. Antes de copiar a primeira fonte, execute `node <skill>/scripts/project.mjs <root> init`: ele inicializa a pasta privada, sua identificação e o `.gitignore` com `*`, sem alterar o plano existente. Não crie a pasta de fontes manualmente antes dessa inicialização. O repositório do plugin recebe somente o produto, seus exemplos sintéticos e testes. Use o [contrato do blueprint](blueprint.md) para aplicar alterações e criar versões locais.
 
 ## 2. Tornar o escopo verificável
 
