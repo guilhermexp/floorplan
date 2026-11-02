@@ -9,6 +9,7 @@ import { readProject, applyProjectChange, snapshotBaseline, listBaselines, valid
 import { planToScan } from './blueprint.mjs';
 import { assessProject } from './assessment.mjs';
 import { readRepowise } from './repowise.mjs';
+import { navigationReport } from './navigation.mjs';
 import { questionViews, protectAnswers, recordAnswers } from './questions.mjs';
 import { freshObservedScan } from './native-observation.mjs';
 
@@ -20,7 +21,7 @@ export function projectStatus(root) {
   const observedScan = freshObservedScan(root, json(path.join(dir, '.cache/observed.json')));
   const graph = json(path.join(dir, 'graph.json'));
   const observation = readRepowise(dir, root);
-  return { revision: state.revision, plan: state.plan, questions: questionViews(state.plan), assessment: assessProject({ plan: state.plan, observedScan, graph, observation }), baselines: listBaselines(dir), observation };
+  return { revision: state.revision, plan: state.plan, navigation: navigationReport(state.plan, graph), questions: questionViews(state.plan), assessment: assessProject({ plan: state.plan, observedScan, graph, observation }), baselines: listBaselines(dir), observation };
 }
 
 export function compileProject(root, dir = mapDir(root), { historyDir = dir, requireAssigned = false } = {}) {

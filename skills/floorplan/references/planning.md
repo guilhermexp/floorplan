@@ -48,6 +48,8 @@ Simplicidade depende do contexto. Um arquivo grande não prova um defeito; um se
 
 ## 4. Planejar telas junto com comportamento
 
+Siga [navigation.md](navigation.md): registre `plan.journeys` por perfil e objetivo, incluindo sequência principal, ações de transição, condições, alternativas, recuperação e resultado. Toda tela deve participar de uma jornada significativa. O catálogo alfabético é apenas um inventário; `architecture.flows` continua descrevendo a execução técnica. Revise também etapas de entrada, saída, retorno e mudanças de papel. Não declare navegação concluída apenas porque todas as imagens existem.
+
 Associe cada proposta visual à tela e ao estado que ela representa. Mantenha a identificação de proposta ou captura real. Uma imagem aprovada representa uma decisão visual, não a aprovação de todo o backend ou de regras ausentes.
 
 Inclua estados que mudam o entendimento do cliente: vazio, carregamento, erro, permissão e confirmação conforme a jornada. Não gere dezenas de versões sem registrá-las: importe cada resultado para a tela correspondente e preserve sua origem/versão.

@@ -110,6 +110,10 @@
             ${findings.map(f => `<p class="project-alert"><b>${h(f.title)}</b>${f.detail ? `<br>${h(f.detail)}` : ''}</p>`).join('')}
             ${navigable.length ? `<button class="btn soft" data-project-nav="${i}">${text('Ver no canvas', 'Show on canvas')}</button>` : ''}</article>`;
         }).join('') : `<p class="project-muted">${text('Este plano ainda não tem requisitos estruturados. Peça ao agente para registrar o escopo e os critérios de aceite.', 'This plan has no structured requirements yet. Ask the agent to record scope and acceptance criteria.')}</p>`}</section>
+      <section><h3>${text('Jornadas de navegação', 'Navigation journeys')} · ${(plan.journeys || []).length}</h3>
+        <p class="project-muted">${h((lifecycle.navigation?.covered || 0) + ' / ' + (plan.screens || []).length)} ${text('telas ligadas a jornadas. Cobertura não comprova implementação nem aprovação.', 'screens linked to journeys. Coverage does not prove implementation or approval.')}</p>
+        ${(plan.journeys || []).map(j => `<article class="project-card"><h4>${h(j.actor)} · ${h(j.title)}</h4><p>${h(j.goal)}</p><button class="btn soft" data-project-journey="${h(j.id)}">${text('Percorrer mockups', 'Walk through mockups')}</button></article>`).join('')}
+        ${(lifecycle.navigation?.findings || []).map(f=>`<p class="project-alert">${h(f.title)} · ${h(f.detail)}</p>`).join('')}</section>
       <section><h3>${text('Decisões de arquitetura', 'Architecture decisions')} · ${decisions.length}</h3>
         ${decisions.length ? decisions.map(d => `<article class="project-card"><h4>${h(d.title)} ${d.status ? badge(d.status) : ''}</h4><p><b>${h(d.choice)}</b></p><p>${h(d.rationale)}</p>
           ${d.alternatives?.length ? `<p class="project-muted">${text('Alternativas consideradas', 'Alternatives considered')}</p>${list(d.alternatives)}` : ''}
@@ -181,6 +185,7 @@
       const ref = lifecycle.plan.requirements[Number(button.dataset.projectNav)]?.refs?.find(r => SC.exists(r));
       if (ref) { modal.close(); SC.reveal(ref); }
     });
+    modal.el.querySelectorAll('[data-project-journey]').forEach(b=>b.onclick=()=>{modal.close();SC.openVisuals?.(b.dataset.projectJourney);});
     const questionsButton = modal.el.querySelector('[data-project-questions]');
     if (questionsButton) questionsButton.onclick = () => { modal.close(); SC.openQuestions?.(); };
     modal.el.querySelectorAll('[data-project-export]').forEach(button => button.onclick = () => exportBaseline(Number(button.dataset.projectExport), modal));

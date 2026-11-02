@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { validateNavigation } from './navigation.mjs';
 import { validateQuestions } from './questions.mjs';
 import { keepOutOfGit } from './common.mjs';
 import { readVisualManifest, readVisualAsset } from './visuals.mjs';
@@ -31,8 +32,8 @@ export function validatePlan(plan) {
   if (!plain(plan)) return ['plan.json must be an object'];
   const schema = plan.$schema || 'floorplan/plan@1';
   if (!['floorplan/plan@1', 'floorplan/plan@2'].includes(schema)) return ['Unsupported plan.$schema'];
-  if (schema === 'floorplan/plan@1') return errors;
-  const allowed = new Set(['$schema', 'source', 'stack', 'assumptions', 'questions', 'files', 'endpoints', 'stage', 'objective', 'scope', 'requirements', 'decisions', 'screens']);
+  if (schema === 'floorplan/plan@1') return plan.journeys === undefined ? errors : ['journeys requires floorplan/plan@2'];
+  const allowed = new Set(['$schema', 'source', 'stack', 'assumptions', 'questions', 'files', 'endpoints', 'stage', 'objective', 'scope', 'requirements', 'decisions', 'screens', 'journeys']);
   const keys = (obj, names, at) => {
     if (!plain(obj)) { errors.push(`${at} must be an object`); return false; }
     for (const k of Object.keys(obj)) if (!names.includes(k)) errors.push(`${at}.${k} is not a supported field`);
@@ -118,6 +119,7 @@ export function validatePlan(plan) {
     if (d.status !== undefined && !['draft', 'proposed', 'review', 'accepted', 'superseded'].includes(d.status)) errors.push(`${at}.status is unsupported`);
   });
   errors.push(...validateQuestions(plan.questions));
+  errors.push(...validateNavigation(plan));
   array(plan.files, 'files').forEach((f, i) => {
     const at = `files[${i}]`;
     if (!keys(f, ['path', 'name', 'description', 'screen', 'uses', 'calls', 'services', 'data'], at)) return;

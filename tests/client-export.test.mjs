@@ -78,10 +78,10 @@ test('exported gallery navigates images with buttons and keyboard without networ
   const data = scripts.find(m => /application\/json/.test(m[1]));
   assert.ok(data, 'presentation data must be present');
   const elements = new Map(), listeners = {};
-  const el = () => ({ textContent: '', innerHTML: '', hidden: false, disabled: false, src: '', alt: '', className: '', style: { setProperty() {} }, dataset: {}, setAttribute() {}, appendChild() {}, addEventListener(event, fn) { this[event] = fn; }, querySelectorAll() { return []; } });
+  const el = () => ({ textContent: '', innerHTML: '', hidden: false, disabled: false, src: '', alt: '', value: '', children: [], className: '', style: { setProperty() {} }, dataset: {}, setAttribute() {}, appendChild(child) { this.children.push(child); }, append(...children) { this.children.push(...children); }, replaceChildren(...children) { this.children=children; if(children[0]?.value!==undefined)this.value=children[0].value; }, removeAttribute(name) { delete this[name]; }, click() { (this.onclick || this._click)?.(); }, addEventListener(event, fn) { this[event==='click'?'_click':event] = fn; }, querySelectorAll() { return []; } });
   const document = { getElementById(id) { if (!elements.has(id)) elements.set(id, el()); return elements.get(id); }, addEventListener: (event, fn) => { listeners[event] = fn; }, createElement: el };
   document.getElementById('blueprint-data').textContent = data[2];
-  const sandbox = { document, window: {}, console };
+  const sandbox = { document, window: {}, console, Option: function(text,value){return {textContent:text,value};} };
   for (const script of scripts.filter(m => !/application\/json/.test(m[1]))) vm.runInNewContext(script[2], sandbox);
   assert.equal(document.getElementById('visual-title').textContent, 'Escolher horário');
   assert.equal(document.getElementById('visual-count').textContent, '1 / 2');

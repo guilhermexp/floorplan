@@ -18,6 +18,7 @@ export function exportClient(outDir, baselineId) {
   const baseline = readBaseline(outDir, baselineId);
   const plan = baseline.documents['plan.json'] || {}, arch = baseline.documents['architecture.json'] || {};
   const manifest = baseline.documents['visuals.json'];
+  const screenIds = new Map(array(plan.screens).flatMap((s,i)=>[s.id, ...(s.aliases || [])].map(ref=>[ref,'screen-'+i])));
   const assets = [], assetIndex = new Map(), visuals = [];
   const frozen = new Map(baseline.assets.map(a => [a.source, a]));
   for (const visual of array(manifest?.items)) {
@@ -30,7 +31,7 @@ export function exportClient(outDir, baselineId) {
       assets.push(`data:${asset.mime};base64,${fs.readFileSync(path.join(baseline.directory, asset.path)).toString('base64')}`);
       assetIndex.set(asset.sha256, index);
     }
-    visuals.push({ title: text(visual.title), kind: visual.kind === 'capture' ? 'capture' : 'proposal', viewport: text(visual.viewport), version: text(visual.version), state: text(visual.state), createdAt: text(visual.createdAt), asset: index });
+    visuals.push({ id: 'visual-'+visuals.length, screen: screenIds.get(visual.screen) || '', approved: visual.approved === true, title: text(visual.title), kind: visual.kind === 'capture' ? 'capture' : 'proposal', viewport: text(visual.viewport), version: text(visual.version), state: text(visual.state), createdAt: text(visual.createdAt), asset: index });
   }
   // Only product-facing fields are copied. No spread of plan, graph, decision, visual,
   // or evidence objects: unknown future fields remain private by default.
@@ -47,8 +48,16 @@ export function exportClient(outDir, baselineId) {
     tour: array(arch.tour).map(s => ({ title: text(s.title), note: text(s.note) })),
     flows: array(arch.flows).map(f => ({ title: text(f.title), description: text(f.description), steps: array(f.steps).map(s => typeof s === 'string' ? '' : text(s.note)).filter(Boolean) })),
   };
+  const screenTitles = new Map(array(plan.screens).map(s=>[s.id,text(s.title)]));
+  const journeys = array(plan.journeys).map((j,i)=>{
+    const ids=new Map(array(j.steps).map((s,n)=>[s.id,'step-'+n]));
+    return {id:'journey-'+i,title:text(j.title),actor:text(j.actor),goal:text(j.goal),path:strings(j.path).map(id=>ids.get(id)),
+      steps:array(j.steps).map(s=>({id:ids.get(s.id),screen:screenIds.get(s.screen)||'',title:screenTitles.get(s.screen)||'Tela',note:text(s.note),end:s.end===true})),
+      transitions:array(j.transitions).map(e=>({from:ids.get(e.from),to:ids.get(e.to),action:text(e.action),condition:text(e.condition),kind:text(e.kind)}))};
+  });
+  const playerScript = fs.readFileSync(new URL('../../assets/ui/34-journeys.js', import.meta.url),'utf8');
   const accepted = baseline.acceptance ? `Aceitação registrada por ${h(baseline.acceptance.actor)} em ${h(date(baseline.acceptance.at))}.` : 'Em revisão · sem aceitação registrada.';
-  const payload = JSON.stringify({ visuals, assets }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  const payload = JSON.stringify({ visuals, assets, journeys }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
@@ -68,44 +77,79 @@ ${product.areas.length ? `<section><h2>Como o projeto se organiza</h2><div class
 ${product.relationships.length ? `<ol class="tour" aria-label="Relações entre as partes">${product.relationships.map(e => `<li><h3>${h(e.from)} → ${h(e.to)}</h3>${e.label ? `<p>${h(e.label)}</p>` : ''}</li>`).join('')}</ol>` : ''}</section>` : ''}
 ${product.tour.length ? `<section><h2>Conheça a jornada</h2><ol class="tour">${product.tour.map(s => `<li>${s.title ? `<h3>${h(s.title)}</h3>` : ''}<p>${h(s.note)}</p></li>`).join('')}</ol></section>` : ''}
 ${product.flows.length ? `<section><h2>Fluxos principais</h2><div class="grid">${product.flows.map(f => card(f.title, `<p>${h(f.description)}</p>${f.steps.length ? `<ol>${f.steps.map(s => `<li>${h(s)}</li>`).join('')}</ol>` : ''}`)).join('')}</div></section>` : ''}
-${visuals.length ? `<section id="visuals"><h2>Telas do projeto</h2><p class="muted">Propostas e capturas desta versão. Use as setas ou selecione uma miniatura para navegar.</p>
-<div class="gallery"><div class="thumbnails" id="visual-thumbnails" aria-label="Miniaturas das telas"></div><div class="preview"><div class="preview-top"><div><h3 id="visual-title"></h3><p class="muted" id="visual-meta"></p></div><span class="badge" id="visual-kind"></span></div><div class="stage"><div class="device" id="visual-device"><img id="visual-image" alt=""></div></div><nav class="gallery-controls" aria-label="Navegação das telas"><button class="button" id="visual-prev" aria-label="Imagem anterior">←</button><span id="visual-count" aria-live="polite"></span><button class="button" id="visual-next" aria-label="Próxima imagem">→</button></nav></div></div><noscript><p class="noscript">Ative JavaScript para navegar pelas ${visuals.length} imagens incorporadas a este arquivo.</p></noscript></section>` : ''}
+${visuals.length || journeys.length ? `<section id="visuals"><h2>Telas do projeto</h2><p class="muted">Propostas e capturas desta versão. Use as setas ou selecione uma miniatura para navegar.</p>
+<label for="journey-select">Jornada de navegação</label><select class="button" id="journey-select"></select><p class="muted" id="journey-note"></p><div class="gallery"><div class="thumbnails" id="visual-thumbnails" aria-label="Miniaturas das telas"></div><div class="preview"><div class="preview-top"><div><h3 id="visual-title"></h3><p class="muted" id="visual-meta"></p></div><span class="badge" id="visual-kind"></span></div><div class="stage"><div class="device" id="visual-device"><img id="visual-image" alt=""></div></div><div id="journey-actions" class="gallery-controls" style="flex-wrap:wrap;max-height:150px;overflow:auto"></div><select class="button" id="visual-version" aria-label="Versão da imagem" hidden></select><nav class="gallery-controls" aria-label="Navegação das telas"><button class="button" id="visual-prev" aria-label="Imagem anterior">←</button><span id="visual-count" aria-live="polite"></span><button class="button" id="visual-next" aria-label="Próxima imagem">→</button></nav></div></div><noscript><p class="noscript">Ative JavaScript para navegar pelas ${visuals.length} imagens incorporadas a este arquivo.</p></noscript></section>` : ''}
 ${product.decisions.length ? `<section><h2>Decisões da solução</h2><div class="grid">${product.decisions.map(d => card(d.title, `<p><b>${h(d.choice)}</b></p><p>${h(d.rationale)}</p>`)).join('')}</div></section>` : ''}
 ${product.questions.length ? `<section><h2>Decisões ainda em aberto</h2>${list(product.questions)}</section>` : ''}
 <footer><p class="muted">Esta apresentação preserva uma versão do planejamento. Propostas visuais e implementação observada não substituem a verificação dos critérios de aceite. Gerado com Floorplan.</p></footer>
 </main><script id="blueprint-data" type="application/json">${payload}</script>
 <script>
+${playerScript}
 (() => {
   const data = JSON.parse(document.getElementById('blueprint-data').textContent);
-  if (!data.visuals.length) return;
+  if (!data.visuals.length && !data.journeys.length) return;
   const get = id => document.getElementById(id);
   const title = get('visual-title'), meta = get('visual-meta'), kind = get('visual-kind'), image = get('visual-image'), device = get('visual-device');
   const previous = get('visual-prev'), next = get('visual-next'), counter = get('visual-count'), thumbnails = get('visual-thumbnails');
-  let index = 0;
-  const buttons = data.visuals.map((visual, position) => {
-    const button = document.createElement('button'); button.className = 'thumbnail'; button.setAttribute('aria-label', visual.title);
-    const img = document.createElement('img'); img.src = data.assets[visual.asset]; img.alt = ''; img.loading = 'lazy'; img.decoding = 'async';
-    const label = document.createElement('span'); label.textContent = visual.title;
-    button.appendChild(img); button.appendChild(label); button.addEventListener('click', () => show(position)); thumbnails.appendChild(button); return button;
-  });
-  function show(position) {
-    index = Math.max(0, Math.min(data.visuals.length - 1, position));
-    const visual = data.visuals[index], viewport = visual.viewport || '', dimensions = /(\\d+)\\s*[x×]\\s*(\\d+)/i.exec(viewport);
-    const ratio = dimensions && +dimensions[2] > 0 ? +dimensions[1] / +dimensions[2] : 390 / 844;
-    const tablet = /tablet|ipad/i.test(viewport), browser = /desktop|browser|web|navegador/i.test(viewport) || (!/mobile|phone|celular|android/i.test(viewport) && ratio > 1 && !tablet);
-    device.className = 'device ' + (tablet ? 'tablet' : browser ? 'browser' : 'phone'); device.style.setProperty('--ratio', Math.max(.25, Math.min(3, ratio)));
-    title.textContent = visual.title; image.src = data.assets[visual.asset]; image.alt = visual.title;
-    meta.textContent = [visual.version, visual.viewport, visual.state, visual.kind === 'capture' && visual.createdAt ? visual.createdAt : ''].filter(Boolean).join(' · ');
-    kind.textContent = visual.kind === 'capture' ? 'Captura real' : 'Proposta'; kind.className = 'badge ' + visual.kind;
-    counter.textContent = (index + 1) + ' / ' + data.visuals.length; previous.disabled = index === 0; next.disabled = index === data.visuals.length - 1;
-    buttons.forEach((button, i) => button.setAttribute('aria-current', i === index ? 'true' : 'false'));
+  const picker=get('journey-select'), version=get('visual-version'), note=get('journey-note'), branches=get('journey-actions');
+  const journeys=data.journeys || [];
+  picker.replaceChildren(...journeys.map(j=>new Option(j.actor+' · '+j.title,j.id)),new Option('Todas as telas · catálogo',''));
+  let journey,player,slides=[],index=0,buttons=[],chosen=new Map();
+  const refs=screen=>data.visuals.filter(v=>v.screen===screen);
+  function render() {
+    journey=journeys.find(j=>j.id===picker.value);player=journey?FloorplanJourneys.createPlayer(journey):null;
+    slides=journey?[...journey.path,...journey.steps.map(s=>s.id).filter(id=>!journey.path.includes(id))].map(id=>({step:journey.steps.find(s=>s.id===id)})):data.visuals.map(visual=>({visual}));
+    thumbnails.replaceChildren();
+    buttons=slides.map((s,i)=>{
+      const v=s.visual || refs(s.step.screen).find(v=>v.approved) || refs(s.step.screen)[0];
+      const button=document.createElement('button');button.className='thumbnail';
+      if(v){const img=document.createElement('img');img.src=data.assets[v.asset];img.alt='';img.loading='lazy';button.append(img);}
+      const label=document.createElement('span');const n=journey?.path.indexOf(s.step?.id);
+      label.textContent=s.step?(n>=0?(n+1)+'. ':'Alternativa · ')+s.step.title:v.title;button.append(label);
+      button.onclick=()=>{if(player)player.inspect(s.step.id);show(i);};thumbnails.append(button);return button;
+    });
+    show(0);
   }
-  previous.addEventListener('click', () => show(index - 1)); next.addEventListener('click', () => show(index + 1));
-  document.addEventListener('keydown', event => {
-    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target?.tagName)) return;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); show(index + (event.key === 'ArrowRight' ? 1 : -1)); }
-  });
-  show(0);
+  function show(position) {
+    if(!slides.length)return;
+    index=Math.max(0,Math.min(slides.length-1,position));const s=slides[index],step=s.step;
+    const options=step?refs(step.screen):[];
+    const visual=s.visual || options.find(v=>v.id===chosen.get(step.id)) || options.find(v=>v.approved) || options[0];
+    version.replaceChildren(...options.map(v=>new Option([v.kind==='capture'?'Captura real':'Proposta',v.version,v.state].filter(Boolean).join(' · '),v.id)));
+    version.hidden=options.length<2;if(visual)version.value=visual.id;
+    title.textContent=step?.title || visual?.title || 'Tela';
+    note.textContent=journey?[journey.goal,step.note,step.end?'Resultado desta jornada.':''].filter(Boolean).join(' · '):'Catálogo completo; esta ordem não representa uma jornada.';
+    device.hidden=!visual;
+    if(visual){
+      const viewport=visual.viewport || '',dimensions=/(\\d+)\\s*[x×]\\s*(\\d+)/i.exec(viewport);
+      const ratio=dimensions && +dimensions[2]>0?+dimensions[1]/+dimensions[2]:390/844;
+      const tablet=/tablet|ipad/i.test(viewport),browser=/desktop|browser|web|navegador/i.test(viewport)||(!/mobile|phone|celular|android/i.test(viewport)&&ratio>1&&!tablet);
+      device.className='device '+(tablet?'tablet':browser?'browser':'phone');device.style.setProperty('--ratio',Math.max(.25,Math.min(3,ratio)));
+      image.src=data.assets[visual.asset];image.alt=visual.title;
+      meta.textContent=[visual.version,visual.viewport,visual.state,visual.kind==='capture'?visual.createdAt:''].filter(Boolean).join(' · ');
+      kind.textContent=visual.kind==='capture'?'Captura real':'Proposta';kind.className='badge '+visual.kind;
+    }else{image.removeAttribute('src');meta.textContent='Etapa preservada, sem imagem nesta versão.';kind.textContent='Sem imagem';}
+    branches.replaceChildren();
+    for(const edge of player?.outgoing() || []){
+      const button=document.createElement('button');button.className='button';button.textContent=[edge.action,edge.condition].filter(Boolean).join(' — ');
+      button.onclick=()=>{player.go(edge.to);show(slides.findIndex(s=>s.step.id===player.current));};branches.append(button);
+    }
+    const pos=journey?.path.indexOf(player.current);
+    counter.textContent=journey?(pos>=0?(pos+1)+' / '+journey.path.length:'Alternativa'):(index+1)+' / '+slides.length;
+    previous.disabled=journey?!player.history.length&&!(pos>0):index===0;next.disabled=journey?!player.next():index===slides.length-1;
+    buttons.forEach((button,i)=>button.setAttribute('aria-current',String(i===index)));
+  }
+  function move(delta){
+    if(!journey)return show(index+delta);
+    if(delta>0){const edge=player.next();if(!edge)return;player.go(edge.to);}
+    else if(!player.back()){const pos=journey.path.indexOf(player.current);if(pos<=0)return;player.inspect(journey.path[pos-1]);}
+    show(slides.findIndex(s=>s.step.id===player.current));
+  }
+  picker.onchange=render;version.onchange=()=>{chosen.set(slides[index].step.id,version.value);show(index);};
+  previous.onclick=()=>move(-1);next.onclick=()=>move(1);
+  document.addEventListener('keydown',event=>{if(['INPUT','TEXTAREA','SELECT'].includes(event.target?.tagName))return;if(['ArrowRight','ArrowLeft'].includes(event.key)){event.preventDefault();move(event.key==='ArrowRight'?1:-1);}});
+  render();
+
 })();
 </script></body></html>`;
   return { html, name: `${baseline.id}-blueprint.html` };

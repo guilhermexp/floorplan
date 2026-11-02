@@ -72,6 +72,7 @@ O exemplo pressupõe um nó `reservas` em `architecture.json`. Use IDs estáveis
 | `evidence` | `{ criterionId, criterionHash, result: "pass"|"fail", method, at, revision, details? }`. `criterionId` precisa existir naquele requisito; copie `criterionHash` da avaliação do critério e `revision` de `observedRevision` após verificar aquela versão do código; `at` é data ISO. Não invente hashes. |
 | `decisions` | `{ id, title, choice, rationale, alternatives?, revisitWhen?, status? }`. Uma hipótese ou inferência não vira decisão aceita automaticamente. |
 | `screens` | `{ id, title, url?, file?, node?, aliases? }`. O ID persiste; aliases preservam vínculos anteriores. |
+| `journeys` | Jornadas de navegação por perfil, com etapas, caminho principal e transições; ver [navigation.md](navigation.md). |
 | Campos legados | `source`, `stack`, `assumptions`, `questions`, `files`, `endpoints` continuam disponíveis conforme abaixo. |
 
 Campos desconhecidos em v2 são erros de validação. Não invente propriedades para evitar registrar uma dúvida. Não reescreva visuais para uma tela nova quando uma associação está ambígua: conserve o registro e resolva a identidade.
@@ -180,3 +181,7 @@ Para cada pedido, explique o requisito afetado, o impacto em telas/contratos e a
 - planned files connected to nothing.
 
 Each has **Resolve on the map** when the map is served (see above), and otherwise **Resolve with Claude/Codex**, a request to paste into the agent.
+
+## Jornadas de navegação
+
+Para planos `floorplan/plan@2` com telas, siga [navigation.md](navigation.md). A sequência e as ramificações da galeria vêm de `plan.journeys`, com IDs persistentes das telas. Planos antigos continuam abrindo; telas sem jornada aparecem como lacunas na revisão.
