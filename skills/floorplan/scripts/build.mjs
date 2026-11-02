@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { technologyStackReport } from './lib/technology-stack.mjs';
 import { navigationReport } from './lib/navigation.mjs';
 import { questionViews } from './lib/questions.mjs';
 import { freshObservedScan } from './lib/native-observation.mjs';
@@ -439,8 +440,8 @@ if (scan.blueprint) try { graph.health = buildPlanHealth({ graph, scan }); } cat
 const observation = readRepowise(outDir, root);
 const assessment = assessProject({ plan, observedScan, graph, observation });
 graph.navigation = navigationReport(plan, graph);
-graph.lifecycle = { navigation: graph.navigation, revision: projectState.revision, plan, questions: questionViews(plan), assessment, baselines: listBaselines(args['history-dir'] || outDir), observation };
-const lifecycleFindings = [...graph.navigation.findings, ...(assessment.findings || []), ...(observation?.findings || []), ...(!scan.blueprint && planned?.scan ? buildPlanHealth({ graph, scan: planned.scan }).issues.filter(i => i.kind === 'question') : [])];
+graph.lifecycle = { technologyStack: technologyStackReport(plan), navigation: graph.navigation, revision: projectState.revision, plan, questions: questionViews(plan), assessment, baselines: listBaselines(args['history-dir'] || outDir), observation };
+const lifecycleFindings = [...graph.lifecycle.technologyStack.findings, ...graph.navigation.findings, ...(assessment.findings || []), ...(observation?.findings || []), ...(!scan.blueprint && planned?.scan ? buildPlanHealth({ graph, scan: planned.scan }).issues.filter(i => i.kind === 'question') : [])];
 if (lifecycleFindings.length) {
   graph.health ||= { issues: [], summary: { high: 0, medium: 0, low: 0 } };
   graph.health.issues.push(...lifecycleFindings);

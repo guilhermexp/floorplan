@@ -1,3 +1,4 @@
+import { technologyStackReport } from './technology-stack.mjs';
 // A client presentation is an allowlisted projection of one immutable local baseline.
 // It never reads current documents or live image paths, and its gallery works offline.
 import fs from 'node:fs';
@@ -17,6 +18,7 @@ const card = (title, body) => `<article class="card"><h3>${h(title)}</h3>${body}
 export function exportClient(outDir, baselineId) {
   const baseline = readBaseline(outDir, baselineId);
   const plan = baseline.documents['plan.json'] || {}, arch = baseline.documents['architecture.json'] || {};
+  const stack = technologyStackReport(plan);
   const manifest = baseline.documents['visuals.json'];
   const screenIds = new Map(array(plan.screens).flatMap((s,i)=>[s.id, ...(s.aliases || [])].map(ref=>[ref,'screen-'+i])));
   const assets = [], assetIndex = new Map(), visuals = [];
@@ -39,6 +41,8 @@ export function exportClient(outDir, baselineId) {
   const product = {
     name: text(arch.project?.name) || 'Projeto', summary: text(arch.project?.summary),
     objective: text(plan.objective) || text(arch.project?.summary),
+    stack: stack.categories.map(([id, title]) => ({title, items: stack.items.filter(item => item.category === id).map(item => ({technology:text(item.technology),status:text(stack.statuses[item.status]?.[0]),purpose:text(item.purpose),rationale:text(item.rationale),version:text(item.version)}))})),
+    legacyStack: strings(plan.stack),
     included: strings(plan.scope?.included), excluded: strings(plan.scope?.excluded),
     requirements: array(plan.requirements).map(r => ({ title: text(r.title), description: text(r.description), criteria: array(r.criteria).map(c => text(c.text)) })),
     decisions: array(plan.decisions).map(d => ({ title: text(d.title), choice: text(d.choice), rationale: text(d.rationale) })),
@@ -72,6 +76,9 @@ export function exportClient(outDir, baselineId) {
 <header><div class="eyebrow">Blueprint do projeto</div><h1>${h(product.name)}</h1><p class="intro">${h(product.objective)}</p>
 <div class="stamp"><span>${h(baseline.title)}</span><span>${h(date(baseline.createdAt))}</span><span>Revisão ${h(baseline.revision.slice(0,12))}</span></div><p class="muted">${accepted}</p></header>
 <section><h2>Escopo desta versão</h2><div class="grid">${card('Incluído', list(product.included))}${card('Fora do escopo', list(product.excluded))}</div></section>
+<section><h2>Stack do projeto</h2><p class="muted">Tecnologias planejadas e decisões pendentes. Escolha não comprova implementação.</p>
+${!stack.items.length && product.legacyStack.length ? list(product.legacyStack) : ''}
+<div class="grid">${product.stack.map(group => card(group.title, group.items.length ? group.items.map(item => `<h3>${h(item.technology || (item.status === 'Não se aplica' ? 'Sem componente' : item.purpose))} · ${h(item.status)}</h3><p>${h(item.purpose)}</p><p class="muted">${h(item.rationale)}</p>${item.version ? `<p>Versão / critério: ${h(item.version)}</p>` : ''}`).join('') : '<p class="muted">Categoria ainda não avaliada.</p>')).join('')}</div></section>
 ${product.requirements.length ? `<section><h2>O que será entregue</h2><div class="grid">${product.requirements.map(r => card(r.title, `${r.description ? `<p>${h(r.description)}</p>` : ''}<p class="muted">Critérios de aceite</p>${list(r.criteria)}`)).join('')}</div></section>` : ''}
 ${product.areas.length ? `<section><h2>Como o projeto se organiza</h2><div class="grid">${product.areas.map(n => card(n.title, `<p>${h(n.summary)}</p>`)).join('')}</div>
 ${product.relationships.length ? `<ol class="tour" aria-label="Relações entre as partes">${product.relationships.map(e => `<li><h3>${h(e.from)} → ${h(e.to)}</h3>${e.label ? `<p>${h(e.label)}</p>` : ''}</li>`).join('')}</ol>` : ''}</section>` : ''}

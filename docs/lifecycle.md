@@ -70,3 +70,7 @@ As decisões pendentes podem ser respondidas diretamente no mapa, com alternativ
 Em **Visuais**, selecione uma jornada por perfil para percorrer seu caminho principal e explorar **Ações e caminhos desta etapa**. As alternativas conservam condições e recuperação; versões de imagem ficam no seletor próprio. **Todas as telas · catálogo** mantém o inventário completo. Em **Planejamento**, cada jornada tem o atalho **Percorrer mockups**.
 
 O contrato em [navigation.md](../skills/floorplan/references/navigation.md) é compartilhado pelo planejamento, validação, revisão, contexto do agente e apresentação offline. IDs inválidos e caminhos sem saída são rejeitados; telas sem jornada aparecem na revisão. Cobertura de navegação não significa implementação comprovada ou aprovação do cliente.
+
+## Stack técnica explícita
+
+Todo projeto deve manter `plan.technologyStack` conforme [o contrato da stack](../skills/floorplan/references/technology-stack.md). Avalie todas as categorias e registre escolhas, propostas, pendências ou não aplicabilidade com justificativa. A seção **Planejamento → Stack do projeto** e a exportação apresentam o mesmo inventário; a revisão aponta omissões. Preserve `stack[]` como resumo compatível e mantenha decisões e perguntas vinculadas.

@@ -63,7 +63,10 @@ test('Screens show what each planned page relies on, down to Stripe', () => {
 });
 
 test('Health is a design review of the plan', () => {
-  const issues = graph.health.issues;
+  const stackIssue = graph.health.issues.find(i => i.id === 'technology-stack:coverage');
+  assert.ok(stackIssue);
+  assert.match(stackIssue.change, /technologyStack/);
+  const issues = graph.health.issues.filter(i => !i.id.startsWith('technology-stack:'));
   const titles = issues.map((i) => `${i.severity} ${i.title}`);
   assert.deepEqual(titles, [
     'medium Anyone could change data through one planned endpoint',
@@ -88,7 +91,7 @@ test('Health is a design review of the plan', () => {
     'Nothing calls DELETE /api/walkers/:id. Add the screen or service that should use it, or remove it if not needed. ',
     'api/src/lib/geo.ts isn’t connected to anything. Connect it to what should use it, or remove it. ',
   ]);
-  assert.match(buildOut, /DESIGN REVIEW {2}0 important · 3 worth fixing · 2 minor/);
+  assert.match(buildOut, /DESIGN REVIEW {2}0 important · 4 worth fixing · 2 minor/);
 });
 
 test('the map page marks it as a blueprint, and Ask knows there is no code to read', () => {

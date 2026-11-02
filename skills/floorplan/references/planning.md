@@ -105,3 +105,7 @@ Este guia tem redação própria e adapta os métodos às responsabilidades e co
 ## Decisões pelo formulário de perguntas
 
 Para dúvidas que mudam o planejamento, prepare `plan.questions` com IDs estáveis, alternativas e consequências, seguindo [o contrato de perguntas](../../../docs/questions.md). O usuário responde em **Perguntas** no mapa, sem precisar copiar cada pergunta para o chat. Leia `node floorplan/query.mjs project` para recuperar respostas e seus hashes. Nunca preencha uma resposta em nome do usuário, nem confunda recomendação com decisão. Incorpore respostas completas em requisitos, decisões e fluxos e registre `resolution {answerHash, summary, at}`. Preserve o histórico; não remova perguntas respondidas. Respostas parciais ou delegação de pesquisa exigem o trabalho restante antes de resolver a decisão.
+
+## Stack técnica explícita
+
+Todo projeto deve manter `plan.technologyStack` conforme [o contrato da stack](technology-stack.md). Avalie todas as categorias e registre escolhas, propostas, pendências ou não aplicabilidade com justificativa. A seção **Planejamento → Stack do projeto** e a exportação apresentam o mesmo inventário; a revisão aponta omissões. Preserve `stack[]` como resumo compatível e mantenha decisões e perguntas vinculadas.

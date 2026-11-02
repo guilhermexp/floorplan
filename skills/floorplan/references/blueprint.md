@@ -185,3 +185,7 @@ Each has **Resolve on the map** when the map is served (see above), and otherwis
 ## Jornadas de navegação
 
 Para planos `floorplan/plan@2` com telas, siga [navigation.md](navigation.md). A sequência e as ramificações da galeria vêm de `plan.journeys`, com IDs persistentes das telas. Planos antigos continuam abrindo; telas sem jornada aparecem como lacunas na revisão.
+
+## Stack técnica explícita
+
+Todo projeto deve manter `plan.technologyStack` conforme [o contrato da stack](technology-stack.md). Avalie todas as categorias e registre escolhas, propostas, pendências ou não aplicabilidade com justificativa. A seção **Planejamento → Stack do projeto** e a exportação apresentam o mesmo inventário; a revisão aponta omissões. Preserve `stack[]` como resumo compatível e mantenha decisões e perguntas vinculadas.

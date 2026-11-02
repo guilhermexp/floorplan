@@ -88,6 +88,26 @@
   }
   const errorText = (e) => e.message === 'Failed to fetch' ? text('O servidor local não respondeu. Reabra o mapa e tente novamente.', 'The local server did not respond. Reopen the map and try again.') : e.message;
 
+  function stackContents() {
+    const report = lifecycle.technologyStack;
+    if (!report) return `<section><h3>${text('Stack do projeto', 'Project technology stack')}</h3>${list(lifecycle.plan?.stack)}</section>`;
+    const language = window.FloorplanI18n?.get() === 'en' ? 2 : 1;
+    const plan = lifecycle.plan || {};
+    return `<section data-project-stack><h3>${text('Stack do projeto', 'Project technology stack')}</h3>
+      <p class="project-muted">${text('Tecnologias, finalidade e escolhas pendentes. Uma escolha planejada não comprova instalação ou implementação.', 'Technologies, purpose and pending choices. A planned choice does not prove installation or implementation.')}</p>
+      ${!report.items.length && report.legacy.length ? `<h4>${text('Resumo do plano anterior', 'Legacy plan summary')}</h4>${list(report.legacy)}` : ''}
+      ${report.categories.map(([id, pt, en]) => {
+        const items = report.items.filter(item => item.category === id);
+        return `<details class="project-card" open><summary><b>${h(language === 2 ? en : pt)}</b> · ${items.length || text('Não avaliada', 'Not assessed')}</summary>
+          ${items.length ? items.map(item => `<article style="margin-top:14px"><h4>${h(item.technology || (item.status === 'not-needed' ? text('Sem componente', 'No component') : item.purpose))} <span class="project-badge">${h(report.statuses[item.status]?.[language - 1] || item.status)}</span></h4>
+            ${item.technology ? `<p>${h(item.purpose)}</p>` : ''}<p class="project-muted">${h(item.rationale)}</p>
+            ${item.version ? `<p>${text('Versão / critério', 'Version / criterion')}: ${h(item.version)}</p>` : ''}
+            ${(item.decisions || []).map(id => `<p class="project-muted">${text('Decisão', 'Decision')}: ${h(plan.decisions?.find(d => d.id === id)?.title || id)}</p>`).join('')}
+            ${(item.questions || []).map(id => `<p class="project-muted">${text('Questão associada', 'Related question')}: ${h(plan.questions?.find(q => q.id === id)?.question || id)}</p>`).join('')}
+            ${item.questions?.length ? `<button class="btn soft" data-stack-questions>${text('Abrir perguntas', 'Open questions')}</button>` : ''}</article>`).join('') : `<p class="project-muted">${text('Definir tecnologia ou registrar por que esta categoria não se aplica ao projeto.', 'Choose technologies or explain why this category does not apply to the project.')}</p>`}</details>`;
+      }).join('')}</section>`;
+  }
+
   function contents(warning = '') {
     const plan = lifecycle.plan || {}, assessment = lifecycle.assessment || {};
     const requirements = plan.requirements || [], decisions = plan.decisions || [], baselines = lifecycle.baselines || [];
@@ -100,6 +120,7 @@
         <h3 style="margin-top:14px">${text('Objetivo', 'Objective')}</h3><p>${h(plan.objective || SC.graph.project.summary || text('Registre o objetivo do projeto para orientar as decisões.', 'Record the project objective to guide decisions.'))}</p>
         <p class="project-muted">${text('Planejamento salvo localmente, fora do Git. Uma captura ou um arquivo encontrado não comprova que um requisito foi atendido.', 'Planning is stored locally, outside Git. A screenshot or an observed file does not prove a requirement is satisfied.')}</p></section>
       <section class="project-scope"><div><h3>${text('Dentro do escopo', 'In scope')}</h3>${list(plan.scope?.included)}</div><div><h3>${text('Fora do escopo', 'Out of scope')}</h3>${list(plan.scope?.excluded)}</div></section>
+      ${stackContents()}
       <section><h3>${text('Requisitos e critérios de aceite', 'Requirements and acceptance criteria')} · ${requirements.length}</h3>
         ${requirements.length ? requirements.map((r,i) => {
           const state = states.get(r.id) || {}, findings = (assessment.findings || []).filter(f => f.requirementId === r.id);
@@ -188,6 +209,7 @@
     modal.el.querySelectorAll('[data-project-journey]').forEach(b=>b.onclick=()=>{modal.close();SC.openVisuals?.(b.dataset.projectJourney);});
     const questionsButton = modal.el.querySelector('[data-project-questions]');
     if (questionsButton) questionsButton.onclick = () => { modal.close(); SC.openQuestions?.(); };
+    modal.el.querySelectorAll('[data-stack-questions]').forEach(b => b.onclick = () => { modal.close(); SC.openQuestions?.(); });
     modal.el.querySelectorAll('[data-project-export]').forEach(button => button.onclick = () => exportBaseline(Number(button.dataset.projectExport), modal));
   }
 

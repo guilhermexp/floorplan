@@ -1,3 +1,4 @@
+import { technologyStackReport } from './technology-stack.mjs';
 // The CLI and local server use the same validated publication path.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +22,7 @@ export function projectStatus(root) {
   const observedScan = freshObservedScan(root, json(path.join(dir, '.cache/observed.json')));
   const graph = json(path.join(dir, 'graph.json'));
   const observation = readRepowise(dir, root);
-  return { revision: state.revision, plan: state.plan, navigation: navigationReport(state.plan, graph), questions: questionViews(state.plan), assessment: assessProject({ plan: state.plan, observedScan, graph, observation }), baselines: listBaselines(dir), observation };
+  return { revision: state.revision, plan: state.plan, technologyStack: technologyStackReport(state.plan), navigation: navigationReport(state.plan, graph), questions: questionViews(state.plan), assessment: assessProject({ plan: state.plan, observedScan, graph, observation }), baselines: listBaselines(dir), observation };
 }
 
 export function compileProject(root, dir = mapDir(root), { historyDir = dir, requireAssigned = false } = {}) {
