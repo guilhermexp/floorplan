@@ -106,17 +106,24 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
 .vs-form textarea { resize:vertical; }
 .vs-error { padding:12px; color:var(--warn-text); background:var(--warn-bg); border-radius:10px; font-size:13px; }
 .vs-notice { color:var(--text-3); font-size:12px; line-height:1.6; padding:12px 0; }
+.vs-gallery[open] { display:flex; flex-direction:column; width:calc(100vw - 32px); height:calc(100dvh - 32px); overflow:hidden; }
+.vs-gallery > .vs-head { flex:none; padding:14px 20px 12px; }
+.vs-gallery .vs-head h2 { font-size:20px; }
+.vs-gallery > .vs-body { display:flex; flex-direction:column; flex:1; min-height:0; padding:12px 20px 16px; overflow:hidden; }
+.vs-gallery .vs-coverage, .vs-gallery .vs-toolbar, .vs-gallery [data-count] { flex:none; }
+.vs-gallery .vs-browser { flex:1; overflow:hidden; }
+.vs-gallery .vs-library { height:100%; overflow:auto; padding:4px; }
+.vs-gallery .vs-thumb { height:clamp(220px,30dvh,360px); }
 .vs-browser { min-height:0; }
 .vs-preview-pane[hidden] { display:none; }
-.vs-browsing { height:min(940px,calc(100dvh - 32px)); overflow:hidden; }
-.vs-browsing .vs-body { display:flex; flex-direction:column; min-height:0; height:calc(100% - 100px); }
+.vs-browsing { overflow:hidden; }
 .vs-browsing .vs-coverage { display:none; }
 .vs-browsing .vs-toolbar { flex:none; margin-bottom:6px; }
 .vs-browsing [data-count] { margin:0 0 8px; padding:6px 0; flex:none; }
-.vs-browsing .vs-browser { display:grid; grid-template-columns:280px minmax(0,1fr); gap:24px; flex:1; overflow:hidden; }
+.vs-browsing .vs-browser { display:grid; grid-template-columns:clamp(300px,25vw,420px) minmax(0,1fr); gap:20px; flex:1; overflow:hidden; }
 .vs-browsing .vs-library { overflow:auto; min-height:0; padding:2px 8px 4px 2px; }
 .vs-browsing .vs-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-.vs-browsing .vs-thumb { height:130px; }
+.vs-browsing .vs-thumb { height:clamp(200px,26dvh,300px); }
 .vs-browsing .vs-screen-copy { padding:10px; }
 .vs-browsing .vs-screen-copy small { display:none; }
 .vs-browsing .vs-screen-copy strong { font-size:11px; margin:0; }
@@ -131,7 +138,7 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
 .vs-carousel-nav .btn { min-height:44px; min-width:44px; font-size:20px; }
 .vs-carousel-nav span { font-size:12px; color:var(--text-3); font-variant-numeric:tabular-nums; min-width:64px; text-align:center; }
 .vs-carousel-footer .vs-actions { margin:0; }
-@media(max-width:760px) { .vs-browsing .vs-browser{grid-template-columns:minmax(0,1fr)} .vs-browsing .vs-library{display:none} .vs-browsing{height:calc(100dvh - 12px)} .vs-browsing .vs-body{padding:12px} .vs-preview-heading h3{font-size:15px} .vs-carousel-nav{gap:6px} }
+@media(max-width:760px) { .vs-browsing .vs-browser{grid-template-columns:minmax(0,1fr)} .vs-browsing .vs-library{display:none} .vs-gallery[open]{width:calc(100vw - 12px);height:calc(100dvh - 12px);max-height:calc(100dvh - 12px)} .vs-browsing .vs-body{padding:12px} .vs-preview-heading h3{font-size:15px} .vs-carousel-nav{gap:6px} }
 @media(max-width:640px) { .vs-dialog{width:calc(100vw - 12px);max-height:calc(100dvh - 12px);border-radius:14px} .vs-head,.vs-body{padding:16px} .vs-toolbar,.vs-pair{display:flex;flex-direction:column} .vs-form{grid-template-columns:1fr} .vs-grid{grid-template-columns:repeat(2,minmax(0,1fr))} .vs-thumb{height:132px} }
 `;
   document.head.append(css);
@@ -262,6 +269,7 @@ html.wk svg.dim .node:not(.hl):has(.visual-card) foreignObject { opacity:1; }
         <div class="vs-preview-heading"><div><h3 data-preview-title tabindex="-1"></h3><p data-preview-meta></p></div><button class="btn soft" data-thumbnails>Miniaturas</button></div>
         <div class="vs-carousel-image"></div><div class="vs-carousel-footer"><div class="vs-carousel-nav"><button class="btn soft" data-prev aria-label="Imagem anterior">←</button><span data-position aria-live="polite"></span><button class="btn soft" data-next aria-label="Próxima imagem">→</button></div><div class="vs-actions"><button class="btn soft" data-expand>Ampliar</button><button class="btn soft" data-open-canvas>Abrir no canvas</button></div></div>
       </section></div>`);
+    d.classList.add('vs-gallery');
     const grid = d.querySelector('.vs-grid'), pane = d.querySelector('.vs-preview-pane');
     let slides = [], index = -1;
     const currentKey = () => slides[index]?.visual?.id || slides[index]?.screen.id;
